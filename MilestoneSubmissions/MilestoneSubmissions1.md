@@ -11,7 +11,7 @@ Code & Conquer
 * **Brennan Long** | GitHub: [BrennanLong27] | Email: [BRLO6308@colorado.edu]
 * **Jensen Trempe** | GitHub: [Jensen-bit] | Email: [JETR9939@colorado.edu]
 * **Brandon Aitken** | GitHub: [beed8] | Email: [brai9355@colorado.edu]
-* **Cole** | GitHub: [colecrowspear11] | Email: [cowa1864@colorado.edu]
+* **Cole Wayne** | GitHub: [colecrowspear11] | Email: [cowa1864@colorado.edu]
 
 ### 4. Application Name
 FairShare
