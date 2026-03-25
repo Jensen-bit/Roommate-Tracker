@@ -50,4 +50,26 @@ We will conduct progress checks and updates 2-3 days a week, communicating on Di
 <img width="2046" height="1204" alt="image" src="https://github.com/user-attachments/assets/c6f839ad-5202-4f54-9862-d826c2c2c475" />
 
 
+## 14. Extra Credit
+
+Identify at least five potential risks related to your project. For each risk, describe its severity and outline suitable mitigation strategies to address it.
+1. Incorrect Expense Calculations (High Severity)
+If the app calculates balances incorrectly, users may have corresponding issues and may stop using the app.
+Mitigation: Implement thorough testing for all calculation logic and validate edge cases.
+
+3. Notification Failures (High Severity)
+If notifications don’t send or are delayed, users may miss payments.
+Mitigation: Use a reliable notification services and implement fallback alerts.
+
+3. Data Loss (High Severity)
+Users could lose expense data or see inconsistent balances across devices.
+Mitigation: Use a secure cloud storage with regular saves and include backup/recovery mechanisms.
+
+4. Poor User Interface / Usability (Medium Severity)
+If the app is confusing or difficult to use, users may stop using it.
+Mitigation: Design a simple, intuitive UI with clear navigation, test with real users, and iterate based on feedback.
+
+5. Security & Privacy Risks (Medium–High Severity)
+The app handles personal and financial data, which could be exposed if not secured properly.
+Mitigation: Implement authentication, encrypt sensitive data, and follow basic security best practices.
 
