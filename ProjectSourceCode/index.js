@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const pgp = require('pg-promise')();
 const session = require('express-session');
 const exphbs = require('express-handlebars');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const app = express();
@@ -44,6 +45,41 @@ app.use((req, res, next) => {
     };
   }
   next();
+});
+
+app.get('/register', (req, res) => {
+  res.render('pages/register');
+});
+
+app.get('/login', (req, res) => {
+  res.status(200).send('Login page');
+});
+
+// POST /register — create new user
+app.post('/register', async (req, res) => {
+  const username = req.body.username ? req.body.username.trim() : '';
+  const password = req.body.password ? req.body.password.trim() : '';
+
+  // Negative case: reject empty inputs
+  if (!username || !password) {
+    return res.status(400).json({ status: 'error', message: 'Username and password are required.' });
+  }
+
+  try {
+    const hash = await bcrypt.hash(password, 10);
+
+    await db.none(
+      'INSERT INTO users(full_name, email, password) VALUES($1, $2, $3)',
+      [username, `${username}@fairshare.local`, hash]
+    );
+
+    // Positive case: registration successful — redirect to login
+    return res.redirect('/login');
+  } catch (err) {
+    console.error(err);
+    // If insert fails (e.g. duplicate username), redirect back to register
+    return res.status(400).json({ status: 'error', message: 'Unable to register user.' });
+  }
 });
 
 app.get('/welcome', (req, res) => {
@@ -338,6 +374,10 @@ app.get('/', (req, res) => {
   res.redirect('/balances');
 });
 
-module.exports = app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
+if (require.main === module) {
+  app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+  });
+}
+
+module.exports = app;
