@@ -29,7 +29,7 @@ app.use(
 );
 
 const db = pgp({
-  host: 'db',
+  host: process.env.POSTGRES_HOST || 'localhost',
   port: 5432,
   database: process.env.POSTGRES_DB,
   user: process.env.POSTGRES_USER,
@@ -372,6 +372,10 @@ app.get('/', (req, res) => {
   res.redirect('/balances');
 });
 
-module.exports = app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
+if (require.main === module) {
+  app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+  });
+}
+
+module.exports = app;
