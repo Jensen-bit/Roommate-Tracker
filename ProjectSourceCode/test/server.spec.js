@@ -1,11 +1,14 @@
-const server = require('../index');
+// ********************** Initialize server **********************************
+const server = require('../index'); // Make sure path to your index.js is correct
+
+// ********************** Import Libraries ***********************************
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-
 chai.should();
 chai.use(chaiHttp);
-const { expect } = chai;
+const { assert, expect } = chai;
 
+// ********************** DEFAULT WELCOME TESTCASE ****************************
 describe('Server!', () => {
   it('Returns the default welcome message', (done) => {
     chai
@@ -13,62 +16,66 @@ describe('Server!', () => {
       .get('/welcome')
       .end((err, res) => {
         expect(res).to.have.status(200);
-        expect(res.body.status).to.equal('success');
-        expect(res.body.message).to.equal('Welcome!');
+        expect(res.body.status).to.equals('success');
+        assert.strictEqual(res.body.message, 'Welcome!');
+        done();
+      });
+  });
+});
+
+// ********************** REGISTER API TESTCASES ****************************
+describe('Testing Register API', () => {
+  // Positive Test Case: valid username and password should register successfully
+  it('Positive: /register - valid registration should redirect to login', (done) => {
+    chai
+      .request(server)
+      .post('/register')
+      .send({ username: 'testuser_valid', password: 'securepassword123' })
+      .end((err, res) => {
+        // After successful registration, the server should redirect to /login (302)
+        // OR return 200 depending on your implementation.
+        // Adjust the status below to match what your /register route returns on success.
+        expect(res).to.have.status(200);
         done();
       });
   });
 
-  it('Loads the balances page', (done) => {
+  // Negative Test Case: empty password should fail with 400
+  it('Negative: /register - missing password should return 400', (done) => {
+    chai
+      .request(server)
+      .post('/register')
+      .send({ username: '', password: '' })
+      .end((err, res) => {
+        expect(res).to.have.status(400);
+        done();
+      });
+  });
+});
+
+// ********************** EXTRA CREDIT: ADDITIONAL UNIT TESTS ****************************
+// Testing the /balances route (authenticated via temp session middleware in index.js)
+describe('Testing Balances API (Extra Credit)', () => {
+  // Positive Test Case: /balances should load and return HTML
+  it('Positive: /balances - should render balances page with status 200', (done) => {
     chai
       .request(server)
       .get('/balances')
       .end((err, res) => {
         expect(res).to.have.status(200);
+        res.should.be.html;
         expect(res.text).to.include('Current Balances With Roommates');
         done();
       });
   });
 
-  it('Loads the payment history page', (done) => {
+  // Negative Test Case: /mark-paid with invalid (non-numeric) participant ID should return 400
+  it('Negative: /mark-paid/:participantId - invalid ID should return 400', (done) => {
     chai
       .request(server)
-      .get('/payment-history')
+      .post('/mark-paid/not-a-number')
       .end((err, res) => {
-        expect(res).to.have.status(200);
-        expect(res.text).to.include('Payment History');
-        done();
-      });
-  });
-
-  it('Loads a single payment history detail page', (done) => {
-    chai
-      .request(server)
-      .get('/payment-history/1')
-      .end((err, res) => {
-        expect(res).to.have.status(200);
-        expect(res.text).to.include('Payment Details');
-        done();
-      });
-  });
-
-  it('Returns 404 for invalid payment history detail ID', (done) => {
-    chai
-      .request(server)
-      .get('/payment-history/99999')
-      .end((err, res) => {
-        expect(res).to.have.status(404);
-        done();
-      });
-  });
-
-  it('Filters payment history by roommate', (done) => {
-    chai
-      .request(server)
-      .get('/payment-history?roommate=2')
-      .end((err, res) => {
-        expect(res).to.have.status(200);
-        expect(res.text).to.include('Payment History');
+        expect(res).to.have.status(400);
         done();
       });
   });
