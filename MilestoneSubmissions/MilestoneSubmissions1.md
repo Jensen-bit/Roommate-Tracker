@@ -1,4 +1,4 @@
-# Lab 8: Project Proposal - Roommate-Tracker
+# Lab 8: Project Proposal - FairShare
 
 ### 1. Team Number
 001
@@ -11,7 +11,7 @@ Code & Conquer
 * **Brennan Long** | GitHub: [BrennanLong27] | Email: [BRLO6308@colorado.edu]
 * **Jensen Trempe** | GitHub: [Jensen-bit] | Email: [JETR9939@colorado.edu]
 * **Brandon Aitken** | GitHub: [beed8] | Email: [brai9355@colorado.edu]
-* **Cole** | GitHub: [Username] | Email: [Email]
+* **Cole Wayne** | GitHub: [colecrowspear11] | Email: [cowa1864@colorado.edu]
 
 ### 4. Application Name
 FairShare
@@ -41,7 +41,35 @@ We will conduct progress checks and updates 2-3 days a week, communicating on Di
 * **Weekly TA Meeting:** We will be meeting with our TA weekly on Tuesday around 7:15 pm using Zoom. 
 
 ### 12. Use Case Diagram
-TODO
+<img width="1184" height="1186" alt="image" src="https://github.com/user-attachments/assets/2d21f3f3-e01d-45b2-bca4-4a2e51fb4783" />
+
 
 ### 13. Wireframes
-TODO
+<img width="1232" height="1354" alt="image" src="https://github.com/user-attachments/assets/79b38252-b15f-4eb0-b447-15c63f5de5cf" />
+<img width="2052" height="1358" alt="image" src="https://github.com/user-attachments/assets/4de746d2-9e52-49a4-90d5-471db5ddbc20" />
+<img width="2046" height="1204" alt="image" src="https://github.com/user-attachments/assets/c6f839ad-5202-4f54-9862-d826c2c2c475" />
+
+
+## 14. Extra Credit
+
+Identify at least five potential risks related to your project. For each risk, describe its severity and outline suitable mitigation strategies to address it.
+1. Incorrect Expense Calculations (High Severity)
+If the app calculates balances incorrectly, users may have corresponding issues and may stop using the app.
+Mitigation: Implement thorough testing for all calculation logic and validate edge cases.
+
+3. Notification Failures (High Severity)
+If notifications don’t send or are delayed, users may miss payments.
+Mitigation: Use a reliable notification services and implement fallback alerts.
+
+3. Data Loss (High Severity)
+Users could lose expense data or see inconsistent balances across devices.
+Mitigation: Use a secure cloud storage with regular saves and include backup/recovery mechanisms.
+
+4. Poor User Interface / Usability (Medium Severity)
+If the app is confusing or difficult to use, users may stop using it.
+Mitigation: Design a simple, intuitive UI with clear navigation, test with real users, and iterate based on feedback.
+
+5. Security & Privacy Risks (Medium–High Severity)
+The app handles personal and financial data, which could be exposed if not secured properly.
+Mitigation: Implement authentication, encrypt sensitive data, and follow basic security best practices.
+
