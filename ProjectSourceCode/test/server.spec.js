@@ -1,5 +1,6 @@
 // ********************** Initialize server **********************************
-const server = require('../index'); // Make sure path to your index.js is correct
+const app = require('../index');
+const server = app.listen(0);
 
 // ********************** Import Libraries ***********************************
 const chai = require('chai');
