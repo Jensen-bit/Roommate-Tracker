@@ -1,0 +1,21 @@
+<div class="container mt-4">
+  <h2 class="mb-4">Payment Details</h2>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h4 class="card-title">{{payment.description}}</h4>
+
+      <p><strong>Expense ID:</strong> {{payment.expense_id}}</p>
+      <p><strong>Participant ID:</strong> {{payment.participant_id}}</p>
+      <p><strong>Total Expense Amount:</strong> ${{payment.total_expense_amount}}</p>
+      <p><strong>Roommate Share:</strong> ${{payment.amount_owed}}</p>
+      <p><strong>Paid By:</strong> {{payment.paid_by_name}}</p>
+      <p><strong>Roommate:</strong> {{payment.roommate_name}}</p>
+      <p><strong>Expense Created:</strong> {{payment.created_at}}</p>
+      <p><strong>Marked Paid At:</strong> {{payment.paid_at}}</p>
+      <p><strong>Marked Paid By:</strong> {{payment.marked_paid_by_name}}</p>
+
+      <a href="/payment-history" class="btn btn-secondary mt-2">Back to History</a>
+    </div>
+  </div>
+</div>

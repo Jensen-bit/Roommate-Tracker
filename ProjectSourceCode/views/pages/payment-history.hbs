@@ -1,0 +1,44 @@
+<div class="container mt-4">
+  <h2 class="mb-4">Payment History</h2>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <form action="/payment-history" method="GET">
+        <div class="mb-3">
+          <label for="roommate" class="form-label">Filter by Roommate</label>
+          <select name="roommate" id="roommate" class="form-select">
+            <option value="">All Roommates</option>
+            {{#each roommates}}
+              <option value="{{this.user_id}}">{{this.full_name}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Filter</button>
+      </form>
+    </div>
+  </div>
+
+  {{#if history.length}}
+    <div class="row">
+      {{#each history}}
+        <div class="col-md-6 col-lg-4 mb-3">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">{{this.description}}</h5>
+              <p class="card-text mb-1"><strong>Roommate:</strong> {{this.roommate_name}}</p>
+              <p class="card-text mb-1"><strong>Paid By:</strong> {{this.paid_by_name}}</p>
+              <p class="card-text mb-1"><strong>Amount:</strong> ${{this.amount_owed}}</p>
+              <p class="card-text mb-1"><strong>Date Paid:</strong> {{this.paid_at}}</p>
+
+              <a href="/payment-history/{{this.participant_id}}" class="btn btn-outline-primary btn-sm mt-2">
+                View Details
+              </a>
+            </div>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <p>No payment history found.</p>
+  {{/if}}
+</div>

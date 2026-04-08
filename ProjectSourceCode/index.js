@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const pgp = require('pg-promise')();
 const session = require('express-session');
-const bcrypt = require('bcryptjs');
 const exphbs = require('express-handlebars');
 require('dotenv').config();
 
@@ -36,7 +35,7 @@ const db = pgp({
   password: process.env.POSTGRES_PASSWORD
 });
 
-// Temporary auto-login for testing/demo
+// temp login
 app.use((req, res, next) => {
   if (!req.session.user) {
     req.session.user = {
@@ -51,11 +50,6 @@ app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
 
-/*
-  Balance logic:
-  + positive net_balance => roommate owes logged-in user
-  + negative net_balance => logged-in user owes roommate
-*/
 app.get('/balances', async (req, res) => {
   try {
     if (!req.session.user) {
@@ -73,6 +67,7 @@ app.get('/balances', async (req, res) => {
         JOIN expense_participants ep ON e.expense_id = ep.expense_id
         WHERE e.paid_by = $1
           AND ep.user_id <> $1
+          AND ep.is_paid = FALSE
         GROUP BY ep.user_id
       ),
       i_owe_them AS (
@@ -83,6 +78,7 @@ app.get('/balances', async (req, res) => {
         JOIN expense_participants ep ON e.expense_id = ep.expense_id
         WHERE ep.user_id = $1
           AND e.paid_by <> $1
+          AND ep.is_paid = FALSE
         GROUP BY e.paid_by
       ),
       combined AS (
@@ -137,10 +133,204 @@ app.get('/balances', async (req, res) => {
       };
     });
 
-    res.render('pages/balances', { balances });
+    const unpaidShares = await db.any(`
+      SELECT
+        ep.participant_id,
+        e.description,
+        u.full_name AS owes_user,
+        ep.amount_owed
+      FROM expense_participants ep
+      JOIN expenses e ON ep.expense_id = e.expense_id
+      JOIN users u ON ep.user_id = u.user_id
+      WHERE ep.is_paid = FALSE
+      ORDER BY ep.participant_id;
+    `);
+
+    res.render('pages/balances', { balances, unpaidShares });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error loading balances page');
+  }
+});
+
+app.post('/mark-paid/:participantId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const participantId = Number(req.params.participantId);
+
+    if (isNaN(participantId)) {
+      return res.status(400).send('Invalid participant ID');
+    }
+
+    const existingShare = await db.oneOrNone(
+      `
+      SELECT participant_id, is_paid
+      FROM expense_participants
+      WHERE participant_id = $1
+      `,
+      [participantId]
+    );
+
+    if (!existingShare) {
+      return res.status(404).send('Expense share not found');
+    }
+
+    if (existingShare.is_paid) {
+      return res.status(400).send('Expense share is already marked as paid');
+    }
+
+    await db.none(
+      `
+      UPDATE expense_participants
+      SET is_paid = TRUE,
+          paid_at = CURRENT_TIMESTAMP,
+          marked_paid_by = $2
+      WHERE participant_id = $1
+      `,
+      [participantId, req.session.user.user_id]
+    );
+
+    res.redirect('/balances');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error marking expense as paid');
+  }
+});
+
+// PAYMENT HISTORY PAGE
+app.get('/payment-history', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const currentUserId = req.session.user.user_id;
+    const roommateFilter = req.query.roommate ? Number(req.query.roommate) : null;
+
+    let historyQuery = `
+      SELECT
+        ep.participant_id,
+        e.description,
+        e.created_at,
+        ep.paid_at,
+        payer.full_name AS paid_by_name,
+        participant.full_name AS roommate_name,
+        ep.amount_owed
+      FROM expense_participants ep
+      JOIN expenses e ON ep.expense_id = e.expense_id
+      JOIN users payer ON e.paid_by = payer.user_id
+      JOIN users participant ON ep.user_id = participant.user_id
+      WHERE ep.is_paid = TRUE
+        AND (e.paid_by = $1 OR ep.user_id = $1)
+    `;
+
+    const params = [currentUserId];
+
+    if (roommateFilter) {
+      historyQuery += `
+        AND (participant.user_id = $2 OR payer.user_id = $2)
+      `;
+      params.push(roommateFilter);
+    }
+
+    historyQuery += `
+      ORDER BY ep.paid_at DESC NULLS LAST, e.created_at DESC
+    `;
+
+    const history = await db.any(historyQuery, params);
+
+    const formattedHistory = history.map((row) => ({
+      participant_id: row.participant_id,
+      description: row.description,
+      created_at: row.created_at ? new Date(row.created_at).toLocaleDateString() : '',
+      paid_at: row.paid_at ? new Date(row.paid_at).toLocaleDateString() : '',
+      paid_by_name: row.paid_by_name,
+      roommate_name: row.roommate_name,
+      amount_owed: Number(row.amount_owed).toFixed(2)
+    }));
+
+    const roommates = await db.any(
+      `
+      SELECT user_id, full_name
+      FROM users
+      WHERE user_id <> $1
+      ORDER BY full_name
+      `,
+      [currentUserId]
+    );
+
+    res.render('pages/payment-history', {
+      history: formattedHistory,
+      roommates,
+      selectedRoommate: roommateFilter
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading payment history');
+  }
+});
+
+// PAYMENT HISTORY DETAILS PAGE
+app.get('/payment-history/:participantId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const participantId = Number(req.params.participantId);
+
+    if (isNaN(participantId)) {
+      return res.status(400).send('Invalid participant ID');
+    }
+
+    const details = await db.oneOrNone(
+      `
+      SELECT
+        ep.participant_id,
+        e.expense_id,
+        e.description,
+        e.amount AS total_expense_amount,
+        e.created_at,
+        ep.amount_owed,
+        ep.paid_at,
+        payer.full_name AS paid_by_name,
+        participant.full_name AS roommate_name,
+        marker.full_name AS marked_paid_by_name
+      FROM expense_participants ep
+      JOIN expenses e ON ep.expense_id = e.expense_id
+      JOIN users payer ON e.paid_by = payer.user_id
+      JOIN users participant ON ep.user_id = participant.user_id
+      LEFT JOIN users marker ON ep.marked_paid_by = marker.user_id
+      WHERE ep.participant_id = $1
+        AND ep.is_paid = TRUE
+      `,
+      [participantId]
+    );
+
+    if (!details) {
+      return res.status(404).send('Payment history item not found');
+    }
+
+    const formattedDetails = {
+      participant_id: details.participant_id,
+      expense_id: details.expense_id,
+      description: details.description,
+      total_expense_amount: Number(details.total_expense_amount).toFixed(2),
+      amount_owed: Number(details.amount_owed).toFixed(2),
+      created_at: details.created_at ? new Date(details.created_at).toLocaleString() : '',
+      paid_at: details.paid_at ? new Date(details.paid_at).toLocaleString() : '',
+      paid_by_name: details.paid_by_name,
+      roommate_name: details.roommate_name,
+      marked_paid_by_name: details.marked_paid_by_name || 'Unknown'
+    };
+
+    res.render('pages/payment-history-details', { payment: formattedDetails });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading payment details');
   }
 });
 

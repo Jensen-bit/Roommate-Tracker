@@ -26,4 +26,33 @@
   {{else}}
     <p>No roommate balances found yet.</p>
   {{/if}}
+
+  <hr class="my-4">
+
+  <h3 class="mb-3">Unpaid Expense Shares</h3>
+
+  {{#if unpaidShares.length}}
+    <div class="row">
+      {{#each unpaidShares}}
+        <div class="col-md-6 col-lg-4 mb-3">
+          <div class="card border-warning shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">{{this.description}}</h5>
+              <p class="card-text mb-2">
+                {{this.owes_user}} owes ${{this.amount_owed}}
+              </p>
+
+              <form action="/mark-paid/{{this.participant_id}}" method="POST">
+                <button type="submit" class="btn btn-success btn-sm">
+                  Mark as Paid
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <p>There are no unpaid expense shares.</p>
+  {{/if}}
 </div>
