@@ -73,11 +73,9 @@ app.post('/register', async (req, res) => {
       [username, `${username}@fairshare.local`, hash]
     );
 
-    // Positive case: registration successful — redirect to login
-    return res.redirect('/login');
+    return res.status(200).json({ status: 'success', message: 'Success' });
   } catch (err) {
     console.error(err);
-    // If insert fails (e.g. duplicate username), redirect back to register
     return res.status(400).json({ status: 'error', message: 'Unable to register user.' });
   }
 });
@@ -374,10 +372,6 @@ app.get('/', (req, res) => {
   res.redirect('/balances');
 });
 
-if (require.main === module) {
-  app.listen(3000, () => {
-    console.log('Server is running on port 3000');
-  });
-}
-
-module.exports = app;
+module.exports = app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});

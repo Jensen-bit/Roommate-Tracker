@@ -26,16 +26,14 @@ describe('Server!', () => {
 // ********************** REGISTER API TESTCASES ****************************
 describe('Testing Register API', () => {
   // Positive Test Case: valid username and password should register successfully
-  it('Positive: /register - valid registration should redirect to login', (done) => {
+  it('Positive: /register - valid registration should return success', (done) => {
     chai
       .request(server)
       .post('/register')
       .send({ username: 'testuser_valid', password: 'securepassword123' })
       .end((err, res) => {
-        // After successful registration, the server should redirect to /login (302)
-        // OR return 200 depending on your implementation.
-        // Adjust the status below to match what your /register route returns on success.
         expect(res).to.have.status(200);
+        expect(res.body.message).to.equals('Success');
         done();
       });
   });
@@ -48,6 +46,7 @@ describe('Testing Register API', () => {
       .send({ username: '', password: '' })
       .end((err, res) => {
         expect(res).to.have.status(400);
+        expect(res.body.message).to.equals('Username and password are required.');
         done();
       });
   });
@@ -79,4 +78,8 @@ describe('Testing Balances API (Extra Credit)', () => {
         done();
       });
   });
+});
+
+after(() => {
+  server.close();
 });
