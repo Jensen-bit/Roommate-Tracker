@@ -37,22 +37,29 @@ const db = pgp({
 });
 
 // temp login
-app.use((req, res, next) => {
-  if (!req.session.user) {
-    req.session.user = {
-      user_id: 1,
-      full_name: 'Brennan Long'
-    };
-  }
-  next();
-});
+describe('GET /login', () => {
 
-app.get('/register', (req, res) => {
-  res.render('pages/register');
-});
+  it('Positive: should return 200', done => {
+    chai
+      .request(server)
+      .get('/login')
+      .end((err, res) => {
+        res.should.have.status(200);
+        done();
+      });
+  });
 
-app.get('/login', (req, res) => {
-  res.status(200).send('Login page');
+  it('Negative: POST to /login with no body should return 404 or 405', done => {
+    chai
+      .request(server)
+      .post('/login')  // no POST handler defined → Express returns 404
+      .send({})
+      .end((err, res) => {
+        res.should.have.status(404);
+        done();
+      });
+  });
+
 });
 
 // POST /register — create new user
