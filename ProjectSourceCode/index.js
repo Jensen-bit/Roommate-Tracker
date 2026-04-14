@@ -816,7 +816,6 @@ app.post('/groups/:groupId/delete', async (req, res) => {
     const groupId = Number(req.params.groupId);
     const currentUserId = req.session.user.user_id;
 
-    // Only creator can delete
     const group = await db.oneOrNone(
       `SELECT created_by FROM groups WHERE group_id = $1`,
       [groupId]
@@ -864,7 +863,6 @@ app.post('/announcements/add', async (req, res) => {
 // Delete an announcement
 app.post('/announcements/:id/delete', async (req, res) => {
   try {
-    // Only deletes if the current user is the author
     await db.none(
       'DELETE FROM announcements WHERE announcement_id = $1 AND author_id = $2',
       [req.params.id, req.session.user.user_id]
@@ -876,6 +874,80 @@ app.post('/announcements/:id/delete', async (req, res) => {
   }
 });
 
+// Load the Chores page
+app.get('/chores', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const chores = await db.any(`
+      SELECT c.chore_id, c.description, c.is_completed,
+             u.full_name as assigned_name,
+             cb.full_name as completed_by_name,
+             to_char(c.completed_at, 'Mon DD, YYYY HH:MI AM') as completed_date
+      FROM chores c
+      LEFT JOIN users u ON c.assigned_to = u.user_id
+      LEFT JOIN users cb ON c.completed_by = cb.user_id
+      ORDER BY c.is_completed ASC, c.created_at DESC
+    `);
+
+    const roommates = await db.any('SELECT user_id, full_name FROM users ORDER BY full_name');
+
+    res.render('pages/chores', {
+      layout: 'main',
+      title: 'Household Chores',
+      choresActive: true,
+      chores: chores,
+      roommates: roommates,
+      error: req.query.error,
+      success: req.query.success
+    });
+  } catch (err) {
+    console.error(err);
+    res.redirect('/balances?error=Failed to load chores');
+  }
+});
+
+app.post('/chores/:id/complete', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    await db.none(`
+      UPDATE chores
+      SET is_completed = TRUE,
+          completed_at = CURRENT_TIMESTAMP,
+          completed_by = $1
+      WHERE chore_id = $2
+    `, [req.session.user.user_id, req.params.id]);
+
+    res.redirect('/chores?success=Chore marked complete!');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/chores?error=Failed to update chore');
+  }
+});
+
+// Add a new chore
+app.post('/chores/add', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+    const { description, assigned_to } = req.body;
+    
+    await db.none(
+      'INSERT INTO chores (description, assigned_to) VALUES ($1, $2)',
+      [description, assigned_to]
+    );
+    res.redirect('/chores?success=Chore added!');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/chores?error=Failed to add chore');
+  }
+});
 
 module.exports = app;
 
