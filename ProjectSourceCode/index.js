@@ -307,6 +307,19 @@ app.get('/balances', async (req, res) => {
       ORDER BY ep.participant_id;
     `);
 
+    let announcements = [];
+    try {
+      announcements = await db.any(`
+        SELECT a.announcement_id, a.message, u.full_name as author_name, a.author_id, 
+               to_char(a.created_at, 'Mon DD, YYYY') as date_posted
+        FROM announcements a
+        JOIN users u ON a.author_id = u.user_id
+        ORDER BY a.created_at DESC
+      `);
+    } catch (e) {
+      console.log('Notice: Announcements table might not exist yet.');
+    }
+
     res.render('pages/balances', {
       layout: 'main',
       title: 'Balances',
@@ -315,7 +328,9 @@ app.get('/balances', async (req, res) => {
       unpaidShares,
       groups,
       selectedGroupId,
-      selectedGroup
+      selectedGroup,
+      announcements,
+      currentUserId
     });
   } catch (err) {
     console.error(err);
@@ -839,5 +854,114 @@ if (require.main === module) {
     console.log('Server is running on port 3000');
   });
 }
+
+// Post a new announcement
+app.post('/announcements/add', async (req, res) => {
+  try {
+    const { message } = req.body;
+    await db.none(
+      'INSERT INTO announcements (message, author_id) VALUES ($1, $2)',
+      [message, req.session.user.user_id]
+    );
+    res.redirect('/balances');
+  } catch (err) {
+    console.log(err);
+    res.redirect('/balances?error=Failed to post announcement');
+  }
+});
+
+// Delete an announcement
+app.post('/announcements/:id/delete', async (req, res) => {
+  try {
+    await db.none(
+      'DELETE FROM announcements WHERE announcement_id = $1 AND author_id = $2',
+      [req.params.id, req.session.user.user_id]
+    );
+    res.redirect('/balances');
+  } catch (err) {
+    console.log(err);
+    res.redirect('/balances');
+  }
+});
+
+// Load the Chores page
+app.get('/chores', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    let chores = [];
+    try {
+      chores = await db.any(`
+        SELECT c.chore_id, c.description, c.is_completed,
+               u.full_name as assigned_name,
+               cb.full_name as completed_by_name,
+               to_char(c.completed_at, 'Mon DD, YYYY HH:MI AM') as completed_date
+        FROM chores c
+        LEFT JOIN users u ON c.assigned_to = u.user_id
+        LEFT JOIN users cb ON c.completed_by = cb.user_id
+        ORDER BY c.is_completed ASC, c.created_at DESC
+      `);
+    } catch (e) {
+      console.log('Notice: Chores table might not exist yet.');
+    }
+
+    const roommates = await db.any('SELECT user_id, full_name FROM users ORDER BY full_name');
+
+    res.render('pages/chores', {
+      layout: 'main',
+      title: 'Household Chores',
+      choresActive: true,
+      chores: chores,
+      roommates: roommates,
+      error: req.query.error,
+      success: req.query.success
+    });
+  } catch (err) {
+    console.error(err);
+    res.redirect('/balances?error=Failed to load chores');
+  }
+});
+
+app.post('/chores/:id/complete', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    await db.none(`
+      UPDATE chores
+      SET is_completed = TRUE,
+          completed_at = CURRENT_TIMESTAMP,
+          completed_by = $1
+      WHERE chore_id = $2
+    `, [req.session.user.user_id, req.params.id]);
+
+    res.redirect('/chores?success=Chore marked complete!');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/chores?error=Failed to update chore');
+  }
+});
+
+// Add a new chore
+app.post('/chores/add', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+    const { description, assigned_to } = req.body;
+    
+    await db.none(
+      'INSERT INTO chores (description, assigned_to) VALUES ($1, $2)',
+      [description, assigned_to]
+    );
+    res.redirect('/chores?success=Chore added!');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/chores?error=Failed to add chore');
+  }
+});
 
 module.exports = app;

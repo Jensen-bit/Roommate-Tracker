@@ -96,8 +96,50 @@
         {{/if}}
       </div>
     </div>
-  </div>
 
+<div class="box box-info">
+  <div class="box-header with-border">
+    <h3 class="box-title"><i class="fa fa-bullhorn"></i> Bulletin Board</h3>
+  </div>
+  <div class="box-body">
+    <form action="/announcements/add" method="POST" style="margin-bottom: 20px;">
+      <div class="input-group">
+        <input type="text" name="message" class="form-control" placeholder="Post an update for the house..." required>
+        <span class="input-group-btn">
+          <button type="submit" class="btn btn-info btn-flat">Post</button>
+        </span>
+      </div>
+    </form>
+
+    {{#if announcements.length}}
+      <ul class="timeline">
+        {{#each announcements}}
+        <li>
+          <i class="fa fa-envelope bg-blue"></i>
+          <div class="timeline-item">
+            <span class="time"><i class="fa fa-clock-o"></i> {{date_posted}}</span>
+            <h3 class="timeline-header"><strong>{{author_name}}</strong> posted:</h3>
+            <div class="timeline-body">
+              {{message}}
+            </div>
+            
+            {{#if (eq author_id ../currentUserId)}}
+            <div class="timeline-footer">
+              <form action="/announcements/{{announcement_id}}/delete" method="POST">
+                <button type="submit" class="btn btn-danger btn-xs btn-flat">Delete</button>
+              </form>
+            </div>
+            {{/if}}
+          </div>
+        </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="text-muted text-center">No announcements yet.</p>
+    {{/if}}
+  </div>
+</div>
+  </div>
   <!-- Outstanding Shares -->
   <div class="col-md-7">
     <div class="box box-warning">

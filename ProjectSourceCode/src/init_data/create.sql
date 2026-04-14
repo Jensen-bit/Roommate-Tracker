@@ -11,6 +11,23 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE announcements (
+    announcement_id SERIAL PRIMARY KEY,
+    message VARCHAR(500) NOT NULL,
+    author_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE chores (
+    chore_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    assigned_to INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMP,
+    completed_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE expenses (
     expense_id SERIAL PRIMARY KEY,
     description VARCHAR(255) NOT NULL,
@@ -69,4 +86,15 @@ INSERT INTO group_members (group_id, user_id) VALUES
 (1, 1),
 (1, 2),
 (1, 3),
+<<<<<<< HEAD
 (1, 4);
+=======
+(1, 4);
+
+-- test data
+INSERT INTO chores (description, assigned_to) VALUES
+('Take out the kitchen trash', 1),
+('Wipe down the counters', 2),
+('Vacuum the living room', 3),
+('Clean the main bathroom', 4);
+>>>>>>> e9dbfe247e3172d7beb73e400132b0fdfed3bc7a
