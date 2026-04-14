@@ -1,5 +1,7 @@
 DROP TABLE IF EXISTS expense_participants;
 DROP TABLE IF EXISTS expenses;
+DROP TABLE IF EXISTS group_members;
+DROP TABLE IF EXISTS groups;
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
@@ -27,21 +29,44 @@ CREATE TABLE expense_participants (
     marked_paid_by INTEGER REFERENCES users(user_id)
 );
 
+CREATE TABLE groups (
+    group_id SERIAL PRIMARY KEY,
+    group_name VARCHAR(100) NOT NULL,
+    created_by INT REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE group_members (
+    id SERIAL PRIMARY KEY,
+    group_id INT REFERENCES groups(group_id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    UNIQUE(group_id, user_id)
+);
+
+-- password for all users is 'password' (bcrypt hashed)
 INSERT INTO users (full_name, email, password) VALUES
-('Brennan Long', 'brennan@test.com', 'password'),
-('Roommate 1', 'roommate1@test.com', 'password'),
-('Roommate 2', 'roommate2@test.com', 'password'),
-('Roommate 3', 'roommate3@test.com', 'password');
+('Brennan Long',  'brennan@test.com',   '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW'),
+('Jensen Trempe',    'Jensen@test.com', '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW'),
+('Roommate 2',    'roommate2@test.com', '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW'),
+('Roommate 3',    'roommate3@test.com', '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW');
 
 INSERT INTO expenses (description, amount, paid_by, created_at) VALUES
-('Internet Bill', 90.00, 1, CURRENT_TIMESTAMP - INTERVAL '5 days'),
-('Groceries', 60.00, 2, CURRENT_TIMESTAMP - INTERVAL '3 days'),
-('Utilities', 120.00, 1, CURRENT_TIMESTAMP - INTERVAL '1 day');
+('Internet Bill', 90.00,  1, CURRENT_TIMESTAMP - INTERVAL '5 days'),
+('Groceries',     60.00,  2, CURRENT_TIMESTAMP - INTERVAL '3 days'),
+('Utilities',     120.00, 1, CURRENT_TIMESTAMP - INTERVAL '1 day');
 
 INSERT INTO expense_participants (expense_id, user_id, amount_owed, is_paid, paid_at, marked_paid_by) VALUES
-(1, 2, 30.00, TRUE, CURRENT_TIMESTAMP - INTERVAL '4 days', 1),
+(1, 2, 30.00, TRUE,  CURRENT_TIMESTAMP - INTERVAL '4 days', 1),
 (1, 3, 30.00, FALSE, NULL, NULL),
-(2, 1, 30.00, TRUE, CURRENT_TIMESTAMP - INTERVAL '2 days', 2),
+(2, 1, 30.00, TRUE,  CURRENT_TIMESTAMP - INTERVAL '2 days', 2),
 (2, 3, 30.00, FALSE, NULL, NULL),
 (3, 2, 40.00, FALSE, NULL, NULL),
 (3, 3, 40.00, FALSE, NULL, NULL);
+
+INSERT INTO groups (group_name, created_by) VALUES ('Apartment', 1);
+
+INSERT INTO group_members (group_id, user_id) VALUES
+(1, 1),
+(1, 2),
+(1, 3),
+(1, 4);

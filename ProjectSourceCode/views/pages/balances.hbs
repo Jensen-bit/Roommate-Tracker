@@ -1,5 +1,38 @@
-<h1>Current Balances With Roommates</h1>
+<!-- Group Filter -->
+<div class="row">
+  <div class="col-xs-12">
+    <div class="box box-info">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-users"></i> Filter by Group</h3>
+      </div>
+      <div class="box-body">
+        <form action="/balances" method="GET" class="form-inline">
+          <div class="form-group">
+            <label class="control-label" style="margin-right:8px;">Group:</label>
+            <select name="group" class="form-control">
+              <option value="">All Roommates</option>
+              {{#each groups}}
+              <option value="{{group_id}}" {{#if (eq ../selectedGroupId group_id)}}selected{{/if}}>
+                {{group_name}}
+              </option>
+              {{/each}}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-info btn-flat" style="margin-left:8px;">
+            <i class="fa fa-filter"></i> Filter
+          </button>
+          {{#if selectedGroupId}}
+          <a href="/balances" class="btn btn-default btn-flat" style="margin-left:8px;">
+            <i class="fa fa-times"></i> Clear
+          </a>
+          {{/if}}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Info Boxes -->
 <div class="row">
   <div class="col-md-4 col-sm-6 col-xs-12">
     <div class="info-box bg-green">
@@ -23,7 +56,7 @@
     <div class="info-box bg-aqua">
       <span class="info-box-icon"><i class="fa fa-users"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">Roommates</span>
+        <span class="info-box-text">{{#if selectedGroup}}{{selectedGroup.group_name}}{{else}}All Roommates{{/if}}</span>
         <span class="info-box-number">{{balances.length}}</span>
       </div>
     </div>
@@ -31,10 +64,14 @@
 </div>
 
 <div class="row">
+  <!-- Roommate Balances -->
   <div class="col-md-5">
     <div class="box box-primary">
       <div class="box-header with-border">
-        <h3 class="box-title"><i class="fa fa-balance-scale"></i> Roommate Balances</h3>
+        <h3 class="box-title">
+          <i class="fa fa-balance-scale"></i>
+          {{#if selectedGroup}}{{selectedGroup.group_name}} Balances{{else}}Roommate Balances{{/if}}
+        </h3>
       </div>
       <div class="box-body">
         {{#if balances.length}}
@@ -61,6 +98,7 @@
     </div>
   </div>
 
+  <!-- Outstanding Shares -->
   <div class="col-md-7">
     <div class="box box-warning">
       <div class="box-header with-border">

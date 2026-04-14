@@ -31,7 +31,7 @@ describe('Testing Register API', () => {
     chai
       .request(server)
       .post('/register')
-      .send({ username: 'testuser_valid', password: 'securepassword123' })
+      .send({ username: 'testuser_valid', email: 'testuser_valid@test.com', password: 'securepassword123' })
       .end((err, res) => {
         expect(res).to.have.status(200);
         expect(res.body.message).to.equals('Success');
@@ -47,7 +47,7 @@ describe('Testing Register API', () => {
       .send({ username: '', password: '' })
       .end((err, res) => {
         expect(res).to.have.status(400);
-        expect(res.body.message).to.equals('Username and password are required.');
+        expect(res.body.message).to.equals('Name, email, and password are required.');
         done();
       });
   });
@@ -64,7 +64,7 @@ describe('Testing Balances API (Extra Credit)', () => {
       .end((err, res) => {
         expect(res).to.have.status(200);
         res.should.be.html;
-        expect(res.text).to.include('Current Balances With Roommates');
+        expect(res.text).to.include('Roommate Balances');
         done();
       });
   });

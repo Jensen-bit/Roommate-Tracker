@@ -145,10 +145,10 @@ app.get('/register', (req, res) => {
 // POST /register — create new user
 app.post('/register', async (req, res) => {
   const username = req.body.username ? req.body.username.trim() : '';
-  const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
   const password = req.body.password ? req.body.password.trim() : '';
 
-  if (!username || !email || !password) {
+  // Negative case: reject empty inputs
+  if (!username || !password) {
     return res.status(400).json({ status: 'error', message: 'Name, email, and password are required.' });
   }
 
@@ -163,7 +163,7 @@ app.post('/register', async (req, res) => {
       SET full_name = EXCLUDED.full_name,
           password = EXCLUDED.password
       `,
-      [username, email, hash]
+      [username, `${username}@fairshare.local`, hash]
     );
 
     return res.status(200).json({ status: 'success', message: 'Success' });
@@ -184,6 +184,42 @@ app.get('/balances', async (req, res) => {
     }
 
     const currentUserId = req.session.user.user_id;
+    const selectedGroupId = req.query.group ? Number(req.query.group) : null;
+
+    // Get all groups the current user belongs to (gracefully handle missing table)
+    let groups = [];
+    try {
+      groups = await db.any(
+        `SELECT g.group_id, g.group_name
+         FROM groups g
+         JOIN group_members gm ON g.group_id = gm.group_id
+         WHERE gm.user_id = $1
+         ORDER BY g.group_name`,
+        [currentUserId]
+      );
+    } catch (e) {
+      groups = [];
+    }
+
+    // Get members of selected group (excluding self), or all users if no group selected
+    let memberIds = [];
+    let selectedGroup = null;
+    if (selectedGroupId && groups.length) {
+      selectedGroup = groups.find(g => g.group_id === selectedGroupId) || null;
+      try {
+        const members = await db.any(
+          `SELECT user_id FROM group_members WHERE group_id = $1 AND user_id <> $2`,
+          [selectedGroupId, currentUserId]
+        );
+        memberIds = members.map(m => m.user_id);
+      } catch (e) {
+        memberIds = [];
+      }
+    }
+
+    const memberFilter = selectedGroupId && memberIds.length > 0
+      ? `AND u.user_id IN (${memberIds.join(',')})`
+      : selectedGroupId ? 'AND FALSE' : '';
 
     const query = `
       WITH paid_by_me AS (
@@ -217,6 +253,7 @@ app.get('/balances', async (req, res) => {
         LEFT JOIN paid_by_me pbm ON u.user_id = pbm.roommate_id
         LEFT JOIN i_owe_them iot ON u.user_id = iot.roommate_id
         WHERE u.user_id <> $1
+        ${memberFilter}
       )
       SELECT roommate_id, roommate_name, ROUND(net_balance::numeric, 2) AS net_balance
       FROM combined
@@ -227,7 +264,6 @@ app.get('/balances', async (req, res) => {
 
     const balances = rows.map((row) => {
       const amount = Number(row.net_balance);
-
       if (amount > 0) {
         return {
           roommate_id: row.roommate_id,
@@ -238,7 +274,6 @@ app.get('/balances', async (req, res) => {
           display_text: `${row.roommate_name} owes you $${amount.toFixed(2)}`
         };
       }
-
       if (amount < 0) {
         return {
           roommate_id: row.roommate_id,
@@ -249,7 +284,6 @@ app.get('/balances', async (req, res) => {
           display_text: `You owe ${row.roommate_name} $${Math.abs(amount).toFixed(2)}`
         };
       }
-
       return {
         roommate_id: row.roommate_id,
         roommate_name: row.roommate_name,
@@ -261,11 +295,7 @@ app.get('/balances', async (req, res) => {
     });
 
     const unpaidShares = await db.any(`
-      SELECT
-        ep.participant_id,
-        e.description,
-        u.full_name AS owes_user,
-        ep.amount_owed
+      SELECT ep.participant_id, e.description, u.full_name AS owes_user, ep.amount_owed
       FROM expense_participants ep
       JOIN expenses e ON ep.expense_id = e.expense_id
       JOIN users u ON ep.user_id = u.user_id
@@ -273,7 +303,16 @@ app.get('/balances', async (req, res) => {
       ORDER BY ep.participant_id;
     `);
 
-    res.render('pages/balances', { layout: 'main', balances, unpaidShares, title: 'Balances', balancesActive: true });
+    res.render('pages/balances', {
+      layout: 'main',
+      title: 'Balances',
+      balancesActive: true,
+      balances,
+      unpaidShares,
+      groups,
+      selectedGroupId,
+      selectedGroup
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error loading balances page');
@@ -604,6 +643,186 @@ app.post('/pay-single/:participantId', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error processing payment');
+  }
+});
+
+// GROUPS PAGE
+app.get('/groups', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const currentUserId = req.session.user.user_id;
+
+    let groupsWithMembers = [];
+    try {
+      const groups = await db.any(
+        `SELECT g.group_id, g.group_name, g.created_by,
+                COUNT(gm.user_id) AS member_count
+         FROM groups g
+         JOIN group_members gm ON g.group_id = gm.group_id
+         WHERE g.group_id IN (
+           SELECT group_id FROM group_members WHERE user_id = $1
+         )
+         GROUP BY g.group_id, g.group_name, g.created_by
+         ORDER BY g.group_name`,
+        [currentUserId]
+      );
+      groupsWithMembers = await Promise.all(groups.map(async (g) => {
+        const members = await db.any(
+          `SELECT u.user_id, u.full_name, u.email
+           FROM group_members gm
+           JOIN users u ON gm.user_id = u.user_id
+           WHERE gm.group_id = $1
+           ORDER BY u.full_name`,
+          [g.group_id]
+        );
+        return { ...g, members };
+      }));
+    } catch (e) {
+      groupsWithMembers = [];
+    }
+
+    res.render('pages/groups', {
+      layout: 'main',
+      title: 'Groups',
+      groupsActive: true,
+      groups: groupsWithMembers,
+      error: req.query.error || (groupsWithMembers.length === 0 ? null : null),
+      success: req.query.success || null
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading groups page');
+  }
+});
+
+// POST /groups/create — create a new group
+app.post('/groups/create', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const currentUserId = req.session.user.user_id;
+    const groupName = req.body.group_name ? req.body.group_name.trim() : '';
+
+    if (!groupName) {
+      return res.redirect('/groups?error=Group+name+is+required');
+    }
+
+    const newGroup = await db.one(
+      `INSERT INTO groups (group_name, created_by) VALUES ($1, $2) RETURNING group_id`,
+      [groupName, currentUserId]
+    );
+
+    // Auto-add creator as member
+    await db.none(
+      `INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)`,
+      [newGroup.group_id, currentUserId]
+    );
+
+    res.redirect('/groups?success=Group+created+successfully');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error creating group');
+  }
+});
+
+// POST /groups/:groupId/add — add a member by email
+app.post('/groups/:groupId/add', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const groupId = Number(req.params.groupId);
+    const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
+
+    if (!email) {
+      return res.redirect(`/groups?error=Email+is+required`);
+    }
+
+    const user = await db.oneOrNone(
+      `SELECT user_id, full_name FROM users WHERE LOWER(email) = $1`,
+      [email]
+    );
+
+    if (!user) {
+      return res.redirect(`/groups?error=No+user+found+with+that+email`);
+    }
+
+    const existing = await db.oneOrNone(
+      `SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2`,
+      [groupId, user.user_id]
+    );
+
+    if (existing) {
+      return res.redirect(`/groups?error=That+person+is+already+in+this+group`);
+    }
+
+    await db.none(
+      `INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)`,
+      [groupId, user.user_id]
+    );
+
+    res.redirect('/groups?success=Member+added+to+group');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error adding member');
+  }
+});
+
+// POST /groups/:groupId/remove/:userId — remove a member
+app.post('/groups/:groupId/remove/:userId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const groupId = Number(req.params.groupId);
+    const userId = Number(req.params.userId);
+
+    await db.none(
+      `DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`,
+      [groupId, userId]
+    );
+
+    res.redirect('/groups?success=Member+removed');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error removing member');
+  }
+});
+
+// POST /groups/:groupId/delete — delete entire group
+app.post('/groups/:groupId/delete', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const groupId = Number(req.params.groupId);
+    const currentUserId = req.session.user.user_id;
+
+    // Only creator can delete
+    const group = await db.oneOrNone(
+      `SELECT created_by FROM groups WHERE group_id = $1`,
+      [groupId]
+    );
+
+    if (!group || group.created_by !== currentUserId) {
+      return res.redirect('/groups?error=Only+the+group+creator+can+delete+it');
+    }
+
+    await db.none(`DELETE FROM group_members WHERE group_id = $1`, [groupId]);
+    await db.none(`DELETE FROM groups WHERE group_id = $1`, [groupId]);
+
+    res.redirect('/groups?success=Group+deleted');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error deleting group');
   }
 });
 
