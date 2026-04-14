@@ -303,6 +303,14 @@ app.get('/balances', async (req, res) => {
       ORDER BY ep.participant_id;
     `);
 
+      const announcements = await db.any(`
+      SELECT a.announcement_id, a.message, u.full_name as author_name, a.author_id, 
+             to_char(a.created_at, 'Mon DD, YYYY') as date_posted
+      FROM announcements a
+      JOIN users u ON a.author_id = u.user_id
+      ORDER BY a.created_at DESC
+    `);
+
     res.render('pages/balances', {
       layout: 'main',
       title: 'Balances',
@@ -311,7 +319,9 @@ app.get('/balances', async (req, res) => {
       unpaidShares,
       groups,
       selectedGroupId,
-      selectedGroup
+      selectedGroup,
+      announcements,
+      currentUserId,
     });
   } catch (err) {
     console.error(err);
@@ -836,4 +846,36 @@ if (require.main === module) {
   });
 }
 
+// Post a new announcement
+app.post('/announcements/add', async (req, res) => {
+  try {
+    const { message } = req.body;
+    await db.none(
+      'INSERT INTO announcements (message, author_id) VALUES ($1, $2)',
+      [message, req.session.user.user_id]
+    );
+    res.redirect('/balances');
+  } catch (err) {
+    console.log(err);
+    res.redirect('/balances?error=Failed to post announcement');
+  }
+});
+
+// Delete an announcement
+app.post('/announcements/:id/delete', async (req, res) => {
+  try {
+    // Only deletes if the current user is the author
+    await db.none(
+      'DELETE FROM announcements WHERE announcement_id = $1 AND author_id = $2',
+      [req.params.id, req.session.user.user_id]
+    );
+    res.redirect('/balances');
+  } catch (err) {
+    console.log(err);
+    res.redirect('/balances');
+  }
+});
+
+
 module.exports = app;
+
