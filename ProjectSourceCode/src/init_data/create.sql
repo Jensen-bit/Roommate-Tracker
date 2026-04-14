@@ -11,6 +11,13 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE announcements (
+    announcement_id SERIAL PRIMARY KEY,
+    message VARCHAR(500) NOT NULL,
+    author_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE expenses (
     expense_id SERIAL PRIMARY KEY,
     description VARCHAR(255) NOT NULL,
