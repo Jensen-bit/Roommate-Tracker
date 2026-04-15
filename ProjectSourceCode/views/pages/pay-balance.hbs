@@ -1,0 +1,81 @@
+{{#if payees.length}}
+<div class="row">
+  <div class="col-xs-12">
+    <div class="callout callout-warning">
+      <h4><i class="fa fa-info-circle"></i> You have outstanding balances</h4>
+      <p>Review each person you owe below. Pay individual expenses or settle everything with one person at once.</p>
+    </div>
+  </div>
+</div>
+
+{{#each payees}}
+<div class="row">
+  <div class="col-xs-12">
+    <div class="box box-danger">
+      <div class="box-header with-border">
+        <h3 class="box-title">
+          <i class="fa fa-user"></i> You owe <strong>{{payer_name}}</strong>
+        </h3>
+        <div class="box-tools pull-right">
+          <span class="label label-danger" style="font-size:14px; padding:5px 10px;">
+            Total: ${{total}}
+          </span>
+        </div>
+      </div>
+      <div class="box-body no-padding">
+        <table class="table table-hover table-condensed">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each items}}
+            <tr>
+              <td>{{description}}</td>
+              <td><small class="text-muted">{{created_at}}</small></td>
+              <td><span class="label label-warning">${{amount_owed}}</span></td>
+              <td>
+                <form action="/pay-single/{{participant_id}}" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-xs btn-success btn-flat">
+                    <i class="fa fa-check"></i> Pay ${{amount_owed}}
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+      <div class="box-footer">
+        <form action="/pay-all/{{payer_id}}" method="POST"
+              onsubmit="return confirm('Mark all ${{total}} owed to {{payer_name}} as paid?')">
+          <button type="submit" class="btn btn-danger btn-flat">
+            <i class="fa fa-money"></i> Pay All — ${{total}} to {{payer_name}}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{{/each}}
+
+{{else}}
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <div class="box box-success">
+      <div class="box-body text-center" style="padding:50px;">
+        <i class="fa fa-check-circle fa-5x text-green"></i>
+        <h3 style="margin-top:20px;">You're all settled up!</h3>
+        <p class="text-muted">You don't owe anyone anything right now.</p>
+        <a href="/balances" class="btn btn-primary btn-flat" style="margin-top:10px;">
+          <i class="fa fa-balance-scale"></i> View Balances
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}

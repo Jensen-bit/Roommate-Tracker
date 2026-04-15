@@ -1,35 +1,128 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>FairShare</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}} | FairShare</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/2.4.18/css/AdminLTE.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/2.4.18/css/skins/skin-blue.min.css">
+  <link rel="stylesheet" href="/dark-mode.css">
 </head>
-<body class="bg-light">
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-      <a class="navbar-brand" href="/">FairShare</a>
-      <div class="navbar-nav me-auto">
-        {{#if currentUser}}
-          <a class="nav-link" href="/balances">Balances</a>
-          <a class="nav-link" href="/payment-history">Payment History</a>
-        {{else}}
-          <a class="nav-link" href="/login">Login</a>
-          <a class="nav-link" href="/register">Register</a>
-        {{/if}}
-      </div>
+<body class="hold-transition skin-blue sidebar-mini">
+<script>
+  // Professional Dark Mode: Check saved preference OR system preference instantly
+  const savedTheme = localStorage.getItem('theme');
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+    document.body.classList.add('dark-mode');
+  }
+</script>
+<div class="wrapper">
 
-      <div class="d-flex align-items-center gap-3">
-        {{#if currentUser}}
-          <span class="navbar-text text-white">
-            Signed in as {{currentUser.full_name}}
-          </span>
-          <form method="POST" action="/logout" class="mb-0">
-            <button type="submit" class="btn btn-outline-light btn-sm">Log Out</button>
-          </form>
-        {{/if}}
+  <header class="main-header">
+    <a href="/balances" class="logo">
+      <span class="logo-mini"><b>FS</b></span>
+      <span class="logo-lg"><b>Fair</b>Share</span>
+    </a>
+    <nav class="navbar navbar-static-top">
+      <a href="#" class="sidebar-toggle" data-toggle="push-menu" role="button">
+        <span class="sr-only">Toggle navigation</span>
+      </a>
+      <div class="navbar-custom-menu">
+        <ul class="nav navbar-nav">
+          <!-- Dark Mode Toggle Switch -->
+          <li>
+            <a href="#" style="display: flex; align-items: center; padding-top: 15px; padding-bottom: 15px;" onclick="document.getElementById('theme-toggle-checkbox').click(); return false;">
+              <label class="theme-switch" for="theme-toggle-checkbox" style="margin: 0; cursor: pointer;" onclick="event.stopPropagation();">
+                <input type="checkbox" id="theme-toggle-checkbox" />
+                <div class="slider round"></div>
+              </label>
+              <span style="margin-left: 8px; font-weight: bold; color: white;">Dark Mode</span>
+            </a>
+          </li>
+          {{#if currentUser}}
+          <li class="dropdown user user-menu">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+              <i class="fa fa-user-circle fa-lg"></i>
+              <span class="hidden-xs">{{currentUser.full_name}}</span>
+            </a>
+            <ul class="dropdown-menu">
+              <li class="user-header">
+                <i class="fa fa-user-circle fa-5x"></i>
+                <p>{{currentUser.full_name}}</p>
+              </li>
+              <li class="user-footer">
+                <div class="pull-right">
+                  <form action="/logout" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-default btn-flat">Sign Out</button>
+                  </form>
+                </div>
+              </li>
+            </ul>
+          </li>
+          {{/if}}
+        </ul>
       </div>
-    </div>
-  </nav>
-  {{{body}}}
+    </nav>
+  </header>
+
+  <aside class="main-sidebar">
+    <section class="sidebar">
+      {{#if currentUser}}
+      <div class="user-panel">
+        <div class="pull-left image">
+          <i class="fa fa-user-circle fa-3x" style="color:#aaa; margin-top:4px;"></i>
+        </div>
+        <div class="pull-left info">
+          <p>{{currentUser.full_name}}</p>
+          <a href="#"><i class="fa fa-circle text-success"></i> Online</a>
+        </div>
+      </div>
+      {{/if}}
+      <ul class="sidebar-menu" data-widget="tree">
+        <li class="header">MAIN NAVIGATION</li>
+        <li class="{{#if balancesActive}}active{{/if}}">
+          <a href="/balances"><i class="fa fa-balance-scale"></i><span>Balances</span></a>
+        </li>
+        <li class="{{#if choresActive}}active{{/if}}">
+          <a href="/chores"><i class="fa fa-check-square-o"></i><span>Chores</span></a>
+        </li>
+        <li class="{{#if historyActive}}active{{/if}}">
+          <a href="/payment-history"><i class="fa fa-history"></i><span>Payment History</span></a>
+        </li>
+        <li class="{{#if payBalanceActive}}active{{/if}}">
+          <a href="/pay-balance"><i class="fa fa-credit-card"></i><span>Pay Balances</span></a>
+        </li>
+        <li class="{{#if groupsActive}}active{{/if}}">
+          <a href="/groups"><i class="fa fa-users"></i><span>Groups</span></a>
+        </li>
+      </ul>
+    </section>
+  </aside>
+
+  <div class="content-wrapper">
+    <section class="content-header">
+      <h1>{{title}}</h1>
+      <ol class="breadcrumb">
+        <li><a href="/balances"><i class="fa fa-home"></i> Home</a></li>
+        <li class="active">{{title}}</li>
+      </ol>
+    </section>
+    <section class="content">
+      {{{body}}}
+    </section>
+  </div>
+
+  <footer class="main-footer">
+    <strong>FairShare</strong> &mdash; Split expenses fairly.
+  </footer>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/2.4.18/js/adminlte.min.js"></script>
+<script src="/dark-mode.js"></script>
 </body>
 </html>

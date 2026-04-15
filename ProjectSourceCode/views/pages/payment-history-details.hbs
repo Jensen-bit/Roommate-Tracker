@@ -1,21 +1,79 @@
-<div class="container mt-4">
-  <h2 class="mb-4">Payment Details</h2>
+<div class="row">
+  <div class="col-md-8 col-md-offset-2">
+    <div class="box box-primary">
+      <div class="box-header with-border">
+        <h3 class="box-title">
+          <i class="fa fa-file-text-o"></i> {{payment.description}}
+        </h3>
+        <div class="box-tools pull-right">
+          <span class="label label-success"><i class="fa fa-check"></i> Paid</span>
+        </div>
+      </div>
+      <div class="box-body">
 
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h4 class="card-title">{{payment.description}}</h4>
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="info-box bg-green" style="min-height:60px;">
+              <span class="info-box-icon" style="font-size:28px; line-height:60px;">
+                <i class="fa fa-dollar"></i>
+              </span>
+              <div class="info-box-content" style="padding:10px 5px;">
+                <span class="info-box-text">Amount Paid</span>
+                <span class="info-box-number" style="font-size:22px;">${{payment.amount_owed}}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="info-box bg-aqua" style="min-height:60px;">
+              <span class="info-box-icon" style="font-size:28px; line-height:60px;">
+                <i class="fa fa-shopping-cart"></i>
+              </span>
+              <div class="info-box-content" style="padding:10px 5px;">
+                <span class="info-box-text">Total Expense</span>
+                <span class="info-box-number" style="font-size:22px;">${{payment.total_expense_amount}}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <p><strong>Expense ID:</strong> {{payment.expense_id}}</p>
-      <p><strong>Participant ID:</strong> {{payment.participant_id}}</p>
-      <p><strong>Total Expense Amount:</strong> ${{payment.total_expense_amount}}</p>
-      <p><strong>Roommate Share:</strong> ${{payment.amount_owed}}</p>
-      <p><strong>Paid By:</strong> {{payment.paid_by_name}}</p>
-      <p><strong>Roommate:</strong> {{payment.roommate_name}}</p>
-      <p><strong>Expense Created:</strong> {{payment.created_at}}</p>
-      <p><strong>Marked Paid At:</strong> {{payment.paid_at}}</p>
-      <p><strong>Marked Paid By:</strong> {{payment.marked_paid_by_name}}</p>
+        <table class="table table-bordered" style="margin-top:10px;">
+          <tbody>
+            <tr>
+              <th style="width:35%"><i class="fa fa-tag"></i> Description</th>
+              <td>{{payment.description}}</td>
+            </tr>
+            <tr>
+              <th><i class="fa fa-user"></i> Paid By</th>
+              <td><span class="label label-primary">{{payment.paid_by_name}}</span></td>
+            </tr>
+            <tr>
+              <th><i class="fa fa-users"></i> Participant</th>
+              <td>{{payment.roommate_name}}</td>
+            </tr>
+            <tr>
+              <th><i class="fa fa-check-circle"></i> Marked Paid By</th>
+              <td>{{payment.marked_paid_by_name}}</td>
+            </tr>
+            <tr>
+              <th><i class="fa fa-calendar"></i> Expense Created</th>
+              <td>{{payment.created_at}}</td>
+            </tr>
+            <tr>
+              <th><i class="fa fa-calendar-check-o"></i> Settled On</th>
+              <td>{{payment.paid_at}}</td>
+            </tr>
+          </tbody>
+        </table>
 
-      <a href="/payment-history" class="btn btn-secondary mt-2">Back to History</a>
+      </div>
+      <div class="box-footer">
+        <a href="/payment-history" class="btn btn-default btn-flat">
+          <i class="fa fa-arrow-left"></i> Back to History
+        </a>
+        <a href="/balances" class="btn btn-primary btn-flat pull-right">
+          <i class="fa fa-balance-scale"></i> View Balances
+        </a>
+      </div>
     </div>
   </div>
 </div>

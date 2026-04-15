@@ -1,0 +1,126 @@
+{{#if error}}
+<div class="row">
+  <div class="col-xs-12">
+    <div class="alert alert-danger alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      <i class="fa fa-exclamation-triangle"></i> {{error}}
+    </div>
+  </div>
+</div>
+{{/if}}
+{{#if success}}
+<div class="row">
+  <div class="col-xs-12">
+    <div class="alert alert-success alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      <i class="fa fa-check"></i> {{success}}
+    </div>
+  </div>
+</div>
+{{/if}}
+
+<div class="row">
+  <!-- Create Group -->
+  <div class="col-md-4">
+    <div class="box box-primary">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-plus"></i> Create New Group</h3>
+      </div>
+      <div class="box-body">
+        <p class="text-muted">Create a group to track shared expenses with specific roommates.</p>
+        <form action="/groups/create" method="POST">
+          <div class="form-group">
+            <label>Group Name</label>
+            <div class="input-group">
+              <span class="input-group-addon"><i class="fa fa-home"></i></span>
+              <input type="text" name="group_name" class="form-control" placeholder="e.g. Apartment 4B" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-flat">
+            <i class="fa fa-plus"></i> Create Group
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Groups List -->
+  <div class="col-md-8">
+    {{#if groups.length}}
+      {{#each groups}}
+      <div class="box box-success">
+        <div class="box-header with-border">
+          <h3 class="box-title">
+            <i class="fa fa-home"></i> {{group_name}}
+          </h3>
+          <div class="box-tools pull-right">
+            <span class="badge bg-green">{{members.length}} members</span>
+            <button type="button" class="btn btn-box-tool" data-widget="collapse">
+              <i class="fa fa-minus"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="box-body">
+          <!-- Add member form -->
+          <form action="/groups/{{group_id}}/add" method="POST" class="form-inline" style="margin-bottom:15px;">
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
+                <input type="email" name="email" class="form-control" placeholder="Add by email..." style="width:250px;">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success btn-flat" style="margin-left:8px;">
+              <i class="fa fa-user-plus"></i> Add Member
+            </button>
+          </form>
+
+          <!-- Members table -->
+          <table class="table table-hover table-condensed" style="margin-bottom:0;">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each members}}
+              <tr>
+                <td><i class="fa fa-user-circle text-muted"></i> <strong style="margin-left:4px;">{{full_name}}</strong></td>
+                <td><small class="text-muted">{{email}}</small></td>
+                <td>
+                  <form action="/groups/{{../group_id}}/remove/{{user_id}}" method="POST" style="display:inline;"
+                        onsubmit="return confirm('Remove {{full_name}} from this group?')">
+                    <button type="submit" class="btn btn-xs btn-danger btn-flat">
+                      <i class="fa fa-user-times"></i> Remove
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="box-footer">
+          <form action="/groups/{{group_id}}/delete" method="POST"
+                onsubmit="return confirm('Delete group {{group_name}}? This cannot be undone.')">
+            <button type="submit" class="btn btn-danger btn-flat btn-sm">
+              <i class="fa fa-trash"></i> Delete Group
+            </button>
+          </form>
+        </div>
+      </div>
+      {{/each}}
+    {{else}}
+      <div class="box box-default">
+        <div class="box-body text-center" style="padding:40px;">
+          <i class="fa fa-users fa-4x text-muted"></i>
+          <h3 style="margin-top:15px;">No groups yet</h3>
+          <p class="text-muted">Create a group to start tracking shared expenses.</p>
+        </div>
+      </div>
+    {{/if}}
+  </div>
+</div>

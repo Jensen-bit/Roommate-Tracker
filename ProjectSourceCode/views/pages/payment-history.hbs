@@ -1,44 +1,86 @@
-<div class="container mt-4">
-  <h2 class="mb-4">Payment History</h2>
-
-  <div class="card mb-4">
-    <div class="card-body">
-      <form action="/payment-history" method="GET">
-        <div class="mb-3">
-          <label for="roommate" class="form-label">Filter by Roommate</label>
-          <select name="roommate" id="roommate" class="form-select">
-            <option value="">All Roommates</option>
-            {{#each roommates}}
-              <option value="{{this.user_id}}">{{this.full_name}}</option>
-            {{/each}}
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary">Apply Filter</button>
-      </form>
+<div class="row">
+  <div class="col-xs-12">
+    <div class="box box-info">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-filter"></i> Filter by Roommate</h3>
+      </div>
+      <div class="box-body">
+        <form action="/payment-history" method="GET" class="form-inline">
+          <div class="form-group">
+            <label class="control-label" style="margin-right:8px;">Roommate:</label>
+            <select name="roommate" class="form-control">
+              <option value="">All Roommates</option>
+              {{#each roommates}}
+              <option value="{{user_id}}" {{#if (eq ../selectedRoommate user_id)}}selected{{/if}}>
+                {{full_name}}
+              </option>
+              {{/each}}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-info btn-flat" style="margin-left:8px;">
+            <i class="fa fa-search"></i> Filter
+          </button>
+          {{#if selectedRoommate}}
+          <a href="/payment-history" class="btn btn-default btn-flat" style="margin-left:8px;">
+            <i class="fa fa-times"></i> Clear
+          </a>
+          {{/if}}
+        </form>
+      </div>
     </div>
   </div>
+</div>
 
-  {{#if history.length}}
-    <div class="row">
-      {{#each history}}
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5 class="card-title">{{this.description}}</h5>
-              <p class="card-text mb-1"><strong>Roommate:</strong> {{this.roommate_name}}</p>
-              <p class="card-text mb-1"><strong>Paid By:</strong> {{this.paid_by_name}}</p>
-              <p class="card-text mb-1"><strong>Amount:</strong> ${{this.amount_owed}}</p>
-              <p class="card-text mb-1"><strong>Date Paid:</strong> {{this.paid_at}}</p>
-
-              <a href="/payment-history/{{this.participant_id}}" class="btn btn-outline-primary btn-sm mt-2">
-                View Details
-              </a>
-            </div>
-          </div>
+<div class="row">
+  <div class="col-xs-12">
+    <div class="box box-success">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-history"></i> Payment Records</h3>
+        <div class="box-tools pull-right">
+          <span class="badge bg-green">{{history.length}} records</span>
         </div>
-      {{/each}}
+      </div>
+      <div class="box-body no-padding">
+        {{#if history.length}}
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Description</th>
+              <th>Paid By</th>
+              <th>Roommate</th>
+              <th>Amount</th>
+              <th>Expense Date</th>
+              <th>Paid On</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each history}}
+            <tr>
+              <td>{{@index}}</td>
+              <td>{{description}}</td>
+              <td><span class="label label-primary">{{paid_by_name}}</span></td>
+              <td>{{roommate_name}}</td>
+              <td><strong>${{amount_owed}}</strong></td>
+              <td><small class="text-muted">{{created_at}}</small></td>
+              <td><small class="text-muted">{{paid_at}}</small></td>
+              <td>
+                <a href="/payment-history/{{participant_id}}" class="btn btn-xs btn-default btn-flat">
+                  <i class="fa fa-eye"></i> View
+                </a>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+        {{else}}
+        <div class="text-center" style="padding:40px;">
+          <i class="fa fa-inbox fa-4x text-muted"></i>
+          <p class="text-muted" style="margin-top:10px;">No payment history found.</p>
+        </div>
+        {{/if}}
+      </div>
     </div>
-  {{else}}
-    <p>No payment history found.</p>
-  {{/if}}
+  </div>
 </div>

@@ -12,12 +12,23 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// View Engine
-app.engine('hbs', exphbs.engine({ extname: '.hbs' }));
+const hbs = exphbs.create({
+  extname: '.hbs',
+  defaultLayout: 'main',
+  layoutsDir: __dirname + '/views/layouts',
+  helpers: {
+    eq: (a, b) => a === b
+  }
+});
+
+app.engine('hbs', hbs.engine);
 app.set('view engine', 'hbs');
 app.set('views', __dirname + '/views');
 
-// Session Setup
+// Serve the dark mode files (Partner addition)
+app.get('/dark-mode.css', (req, res) => res.sendFile(__dirname + '/dark-mode.css'));
+app.get('/dark-mode.js', (req, res) => res.sendFile(__dirname + '/dark-mode.js'));
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'super duper secret!',
@@ -60,6 +71,7 @@ app.get('/login', (req, res) => {
   }
 
   res.render('pages/login', {
+    layout: 'auth',
     title: 'Login',
     error: req.query.error || null
   });
@@ -71,6 +83,7 @@ app.post('/login', async (req, res) => {
 
   if (!email || !password) {
     return res.status(400).render('pages/login', {
+      layout: 'auth',
       title: 'Login',
       error: 'Email and password are required.'
     });
@@ -84,6 +97,7 @@ app.post('/login', async (req, res) => {
 
     if (!user) {
       return res.status(401).render('pages/login', {
+        layout: 'auth',
         title: 'Login',
         error: 'Invalid email or password.'
       });
@@ -96,6 +110,7 @@ app.post('/login', async (req, res) => {
 
     if (!passwordMatches) {
       return res.status(401).render('pages/login', {
+        layout: 'auth',
         title: 'Login',
         error: 'Invalid email or password.'
       });
@@ -111,6 +126,7 @@ app.post('/login', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).render('pages/login', {
+      layout: 'auth',
       title: 'Login',
       error: 'Unable to log in right now.'
     });
@@ -125,6 +141,7 @@ app.post('/logout', (req, res) => {
 
 app.get('/register', (req, res) => {
   res.render('pages/register', {
+    layout: 'auth',
     title: 'Register'
   });
 });
@@ -134,7 +151,7 @@ app.post('/register', async (req, res) => {
   const password = req.body.password ? req.body.password.trim() : '';
 
   if (!username || !password) {
-    return res.status(400).json({ status: 'error', message: 'Username and password are required.' });
+    return res.status(400).json({ status: 'error', message: 'Name, email, and password are required.' });
   }
 
   try {
@@ -162,7 +179,6 @@ app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
 
-
 app.post('/add-expense', async (req, res) => {
     const { amount, note, category, date, group_id, splits } = req.body;
     
@@ -179,14 +195,12 @@ app.post('/add-expense', async (req, res) => {
 
     try {
         await db.tx(async t => {
-            // Save main expense (Using 'paid_by' and 'description' to match partner schema)
             const expense = await t.one(
                 `INSERT INTO expenses (amount, description, category, expense_date, paid_by, group_id) 
                  VALUES ($1, $2, $3, $4, $5, $6) RETURNING expense_id`,
                 [amount, note, category, date || new Date(), payerId, group_id]
             );
 
-            // Save splits (Using 'expense_participants' and 'is_paid' to match partner schema)
             const splitQueries = splits.map(s => {
                 const amountOwed = (amount * (s.percent / 100)).toFixed(2);
                 return t.none(
@@ -197,7 +211,6 @@ app.post('/add-expense', async (req, res) => {
             });
             await t.batch(splitQueries);
 
-            // Find group members
             const emailQuery = `
                 SELECT email FROM users 
                 JOIN users_to_groups ON users.user_id = users_to_groups.user_id
@@ -205,7 +218,6 @@ app.post('/add-expense', async (req, res) => {
             `;
             const roommates = await t.any(emailQuery, [group_id, payerId]);
 
-            // Send Emails
             const emailPromises = roommates.map(rm => 
                 sendExpenseEmail(rm.email, amount, payerName, note)
             );
@@ -226,6 +238,40 @@ app.get('/balances', async (req, res) => {
     }
 
     const currentUserId = req.session.user.user_id;
+    const selectedGroupId = req.query.group ? Number(req.query.group) : null;
+
+    let groups = [];
+    try {
+      groups = await db.any(
+        `SELECT g.group_id, g.group_name
+         FROM groups g
+         JOIN group_members gm ON g.group_id = gm.group_id
+         WHERE gm.user_id = $1
+         ORDER BY g.group_name`,
+        [currentUserId]
+      );
+    } catch (e) {
+      groups = [];
+    }
+
+    let memberIds = [];
+    let selectedGroup = null;
+    if (selectedGroupId && groups.length) {
+      selectedGroup = groups.find(g => g.group_id === selectedGroupId) || null;
+      try {
+        const members = await db.any(
+          `SELECT user_id FROM group_members WHERE group_id = $1 AND user_id <> $2`,
+          [selectedGroupId, currentUserId]
+        );
+        memberIds = members.map(m => m.user_id);
+      } catch (e) {
+        memberIds = [];
+      }
+    }
+
+    const memberFilter = selectedGroupId && memberIds.length > 0
+      ? `AND u.user_id IN (${memberIds.join(',')})`
+      : selectedGroupId ? 'AND FALSE' : '';
 
     const query = `
       WITH paid_by_me AS (
@@ -259,6 +305,7 @@ app.get('/balances', async (req, res) => {
         LEFT JOIN paid_by_me pbm ON u.user_id = pbm.roommate_id
         LEFT JOIN i_owe_them iot ON u.user_id = iot.roommate_id
         WHERE u.user_id <> $1
+        ${memberFilter}
       )
       SELECT roommate_id, roommate_name, ROUND(net_balance::numeric, 2) AS net_balance
       FROM combined
@@ -269,7 +316,6 @@ app.get('/balances', async (req, res) => {
 
     const balances = rows.map((row) => {
       const amount = Number(row.net_balance);
-
       if (amount > 0) {
         return {
           roommate_id: row.roommate_id,
@@ -280,7 +326,6 @@ app.get('/balances', async (req, res) => {
           display_text: `${row.roommate_name} owes you $${amount.toFixed(2)}`
         };
       }
-
       if (amount < 0) {
         return {
           roommate_id: row.roommate_id,
@@ -291,7 +336,6 @@ app.get('/balances', async (req, res) => {
           display_text: `You owe ${row.roommate_name} $${Math.abs(amount).toFixed(2)}`
         };
       }
-
       return {
         roommate_id: row.roommate_id,
         roommate_name: row.roommate_name,
@@ -303,11 +347,7 @@ app.get('/balances', async (req, res) => {
     });
 
     const unpaidShares = await db.any(`
-      SELECT
-        ep.participant_id,
-        e.description,
-        u.full_name AS owes_user,
-        ep.amount_owed
+      SELECT ep.participant_id, e.description, u.full_name AS owes_user, ep.amount_owed
       FROM expense_participants ep
       JOIN expenses e ON ep.expense_id = e.expense_id
       JOIN users u ON ep.user_id = u.user_id
@@ -315,7 +355,31 @@ app.get('/balances', async (req, res) => {
       ORDER BY ep.participant_id;
     `);
 
-    res.render('pages/balances', { balances, unpaidShares });
+    let announcements = [];
+    try {
+      announcements = await db.any(`
+        SELECT a.announcement_id, a.message, u.full_name as author_name, a.author_id, 
+               to_char(a.created_at, 'Mon DD, YYYY') as date_posted
+        FROM announcements a
+        JOIN users u ON a.author_id = u.user_id
+        ORDER BY a.created_at DESC
+      `);
+    } catch (e) {
+      console.log('Notice: Announcements table might not exist yet.');
+    }
+
+    res.render('pages/balances', {
+      layout: 'main',
+      title: 'Balances',
+      balancesActive: true,
+      balances,
+      unpaidShares,
+      groups,
+      selectedGroupId,
+      selectedGroup,
+      announcements,
+      currentUserId
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error loading balances page');
@@ -431,6 +495,9 @@ app.get('/payment-history', async (req, res) => {
     );
 
     res.render('pages/payment-history', {
+      layout: 'main',
+      title: 'Payment History',
+      historyActive: true,
       history: formattedHistory,
       roommates,
       selectedRoommate: roommateFilter
@@ -494,15 +561,432 @@ app.get('/payment-history/:participantId', async (req, res) => {
       marked_paid_by_name: details.marked_paid_by_name || 'Unknown'
     };
 
-    res.render('pages/payment-history-details', { payment: formattedDetails });
+    res.render('pages/payment-history-details', { layout: 'main', payment: formattedDetails, title: 'Payment Details', historyActive: true });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error loading payment details');
   }
 });
 
+app.get('/pay-balance', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const currentUserId = req.session.user.user_id;
+
+    const owedByMe = await db.any(
+      `
+      SELECT
+        ep.participant_id,
+        e.description,
+        ep.amount_owed,
+        payer.user_id AS payer_id,
+        payer.full_name AS payer_name,
+        e.created_at
+      FROM expense_participants ep
+      JOIN expenses e ON ep.expense_id = e.expense_id
+      JOIN users payer ON e.paid_by = payer.user_id
+      WHERE ep.user_id = $1
+        AND e.paid_by <> $1
+        AND ep.is_paid = FALSE
+      ORDER BY payer.full_name, e.created_at
+      `,
+      [currentUserId]
+    );
+
+    const grouped = {};
+    owedByMe.forEach((row) => {
+      if (!grouped[row.payer_id]) {
+        grouped[row.payer_id] = {
+          payer_id: row.payer_id,
+          payer_name: row.payer_name,
+          total: 0,
+          items: []
+        };
+      }
+      grouped[row.payer_id].total += Number(row.amount_owed);
+      grouped[row.payer_id].items.push({
+        participant_id: row.participant_id,
+        description: row.description,
+        amount_owed: Number(row.amount_owed).toFixed(2),
+        created_at: row.created_at ? new Date(row.created_at).toLocaleDateString() : ''
+      });
+    });
+
+    const payees = Object.values(grouped).map((g) => ({
+      ...g,
+      total: g.total.toFixed(2)
+    }));
+
+    res.render('pages/pay-balance', {
+      layout: 'main',
+      title: 'Pay Balances',
+      payBalanceActive: true,
+      payees
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading pay balance page');
+  }
+});
+
+app.post('/pay-all/:payerId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const currentUserId = req.session.user.user_id;
+    const payerId = Number(req.params.payerId);
+
+    if (isNaN(payerId)) {
+      return res.status(400).send('Invalid payer ID');
+    }
+
+    await db.none(
+      `
+      UPDATE expense_participants ep
+      SET is_paid = TRUE,
+          paid_at = CURRENT_TIMESTAMP,
+          marked_paid_by = $1
+      FROM expenses e
+      WHERE ep.expense_id = e.expense_id
+        AND ep.user_id = $1
+        AND e.paid_by = $2
+        AND ep.is_paid = FALSE
+      `,
+      [currentUserId, payerId]
+    );
+
+    res.redirect('/pay-balance');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error processing payment');
+  }
+});
+
+app.post('/pay-single/:participantId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const currentUserId = req.session.user.user_id;
+    const participantId = Number(req.params.participantId);
+
+    if (isNaN(participantId)) {
+      return res.status(400).send('Invalid participant ID');
+    }
+
+    const share = await db.oneOrNone(
+      `SELECT participant_id, is_paid, user_id FROM expense_participants WHERE participant_id = $1`,
+      [participantId]
+    );
+
+    if (!share) return res.status(404).send('Share not found');
+    if (share.is_paid) return res.status(400).send('Already paid');
+    if (share.user_id !== currentUserId) return res.status(403).send('Not authorized');
+
+    await db.none(
+      `
+      UPDATE expense_participants
+      SET is_paid = TRUE,
+          paid_at = CURRENT_TIMESTAMP,
+          marked_paid_by = $2
+      WHERE participant_id = $1
+      `,
+      [participantId, currentUserId]
+    );
+
+    res.redirect('/pay-balance');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error processing payment');
+  }
+});
+
+app.get('/groups', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const currentUserId = req.session.user.user_id;
+
+    let groupsWithMembers = [];
+    try {
+      const groups = await db.any(
+        `SELECT g.group_id, g.group_name, g.created_by,
+                COUNT(gm.user_id) AS member_count
+         FROM groups g
+         JOIN group_members gm ON g.group_id = gm.group_id
+         WHERE g.group_id IN (
+           SELECT group_id FROM group_members WHERE user_id = $1
+         )
+         GROUP BY g.group_id, g.group_name, g.created_by
+         ORDER BY g.group_name`,
+        [currentUserId]
+      );
+      groupsWithMembers = await Promise.all(groups.map(async (g) => {
+        const members = await db.any(
+          `SELECT u.user_id, u.full_name, u.email
+           FROM group_members gm
+           JOIN users u ON gm.user_id = u.user_id
+           WHERE gm.group_id = $1
+           ORDER BY u.full_name`,
+          [g.group_id]
+        );
+        return { ...g, members };
+      }));
+    } catch (e) {
+      groupsWithMembers = [];
+    }
+
+    res.render('pages/groups', {
+      layout: 'main',
+      title: 'Groups',
+      groupsActive: true,
+      groups: groupsWithMembers,
+      error: req.query.error || (groupsWithMembers.length === 0 ? null : null),
+      success: req.query.success || null
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading groups page');
+  }
+});
+
+app.post('/groups/create', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const currentUserId = req.session.user.user_id;
+    const groupName = req.body.group_name ? req.body.group_name.trim() : '';
+
+    if (!groupName) {
+      return res.redirect('/groups?error=Group+name+is+required');
+    }
+
+    const newGroup = await db.one(
+      `INSERT INTO groups (group_name, created_by) VALUES ($1, $2) RETURNING group_id`,
+      [groupName, currentUserId]
+    );
+
+    await db.none(
+      `INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)`,
+      [newGroup.group_id, currentUserId]
+    );
+
+    res.redirect('/groups?success=Group+created+successfully');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error creating group');
+  }
+});
+
+app.post('/groups/:groupId/add', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const groupId = Number(req.params.groupId);
+    const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
+
+    if (!email) {
+      return res.redirect(`/groups?error=Email+is+required`);
+    }
+
+    const user = await db.oneOrNone(
+      `SELECT user_id, full_name FROM users WHERE LOWER(email) = $1`,
+      [email]
+    );
+
+    if (!user) {
+      return res.redirect(`/groups?error=No+user+found+with+that+email`);
+    }
+
+    const existing = await db.oneOrNone(
+      `SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2`,
+      [groupId, user.user_id]
+    );
+
+    if (existing) {
+      return res.redirect(`/groups?error=That+person+is+already+in+this+group`);
+    }
+
+    await db.none(
+      `INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)`,
+      [groupId, user.user_id]
+    );
+
+    res.redirect('/groups?success=Member+added+to+group');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error adding member');
+  }
+});
+
+app.post('/groups/:groupId/remove/:userId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const groupId = Number(req.params.groupId);
+    const userId = Number(req.params.userId);
+
+    await db.none(
+      `DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`,
+      [groupId, userId]
+    );
+
+    res.redirect('/groups?success=Member+removed');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error removing member');
+  }
+});
+
+app.post('/groups/:groupId/delete', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).send('You must be logged in');
+    }
+
+    const groupId = Number(req.params.groupId);
+    const currentUserId = req.session.user.user_id;
+
+    const group = await db.oneOrNone(
+      `SELECT created_by FROM groups WHERE group_id = $1`,
+      [groupId]
+    );
+
+    if (!group || group.created_by !== currentUserId) {
+      return res.redirect('/groups?error=Only+the+group+creator+can+delete+it');
+    }
+
+    await db.none(`DELETE FROM group_members WHERE group_id = $1`, [groupId]);
+    await db.none(`DELETE FROM groups WHERE group_id = $1`, [groupId]);
+
+    res.redirect('/groups?success=Group+deleted');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error deleting group');
+  }
+});
+
 app.get('/', (req, res) => {
   res.redirect('/balances');
+});
+
+app.post('/announcements/add', async (req, res) => {
+  try {
+    const { message } = req.body;
+    await db.none(
+      'INSERT INTO announcements (message, author_id) VALUES ($1, $2)',
+      [message, req.session.user.user_id]
+    );
+    res.redirect('/balances');
+  } catch (err) {
+    console.log(err);
+    res.redirect('/balances?error=Failed to post announcement');
+  }
+});
+
+app.post('/announcements/:id/delete', async (req, res) => {
+  try {
+    await db.none(
+      'DELETE FROM announcements WHERE announcement_id = $1 AND author_id = $2',
+      [req.params.id, req.session.user.user_id]
+    );
+    res.redirect('/balances');
+  } catch (err) {
+    console.log(err);
+    res.redirect('/balances');
+  }
+});
+
+app.get('/chores', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    let chores = [];
+    try {
+      chores = await db.any(`
+        SELECT c.chore_id, c.description, c.is_completed,
+               u.full_name as assigned_name,
+               cb.full_name as completed_by_name,
+               to_char(c.completed_at, 'Mon DD, YYYY HH:MI AM') as completed_date
+        FROM chores c
+        LEFT JOIN users u ON c.assigned_to = u.user_id
+        LEFT JOIN users cb ON c.completed_by = cb.user_id
+        ORDER BY c.is_completed ASC, c.created_at DESC
+      `);
+    } catch (e) {
+      console.log('Notice: Chores table might not exist yet.');
+    }
+
+    const roommates = await db.any('SELECT user_id, full_name FROM users ORDER BY full_name');
+
+    res.render('pages/chores', {
+      layout: 'main',
+      title: 'Household Chores',
+      choresActive: true,
+      chores: chores,
+      roommates: roommates,
+      error: req.query.error,
+      success: req.query.success
+    });
+  } catch (err) {
+    console.error(err);
+    res.redirect('/balances?error=Failed to load chores');
+  }
+});
+
+app.post('/chores/:id/complete', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    await db.none(`
+      UPDATE chores
+      SET is_completed = TRUE,
+          completed_at = CURRENT_TIMESTAMP,
+          completed_by = $1
+      WHERE chore_id = $2
+    `, [req.session.user.user_id, req.params.id]);
+
+    res.redirect('/chores?success=Chore marked complete!');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/chores?error=Failed to update chore');
+  }
+});
+
+app.post('/chores/add', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+    const { description, assigned_to } = req.body;
+    
+    await db.none(
+      'INSERT INTO chores (description, assigned_to) VALUES ($1, $2)',
+      [description, assigned_to]
+    );
+    res.redirect('/chores?success=Chore added!');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/chores?error=Failed to add chore');
+  }
 });
 
 if (require.main === module) {

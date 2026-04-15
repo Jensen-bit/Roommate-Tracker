@@ -1,14 +1,62 @@
-<div class="container py-4">
-  <h1>Create Account</h1>
-  <form method="POST" action="/register">
-    <div class="mb-3">
-      <label for="username" class="form-label">Username</label>
-      <input id="username" name="username" type="text" class="form-control" required />
-    </div>
-    <div class="mb-3">
-      <label for="password" class="form-label">Password</label>
-      <input id="password" name="password" type="password" class="form-control" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Register</button>
-  </form>
+<div class="login-box">
+  <div class="login-logo">
+    <a href="/balances"><b>Fair</b>Share</a>
+  </div>
+  <div class="login-box-body">
+    <p class="login-box-msg">Create your account</p>
+
+    <div id="alert-box"></div>
+
+    <form id="register-form">
+      <div class="form-group has-feedback">
+        <input type="text" id="username" name="username" class="form-control" placeholder="Full Name" required>
+        <span class="fa fa-user form-control-feedback"></span>
+      </div>
+      <div class="form-group has-feedback">
+        <input type="email" id="email" name="email" class="form-control" placeholder="Email" required>
+        <span class="fa fa-envelope form-control-feedback"></span>
+      </div>
+      <div class="form-group has-feedback">
+        <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
+        <span class="fa fa-lock form-control-feedback"></span>
+      </div>
+      <div class="row">
+        <div class="col-xs-12">
+          <button type="submit" class="btn btn-success btn-block btn-flat">
+            <i class="fa fa-user-plus"></i> Register
+          </button>
+        </div>
+      </div>
+    </form>
+    <br>
+    <a href="/login">Already have an account? Sign in</a>
+  </div>
 </div>
+
+<script>
+  document.getElementById('register-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var username = document.getElementById('username').value.trim();
+    var email = document.getElementById('email').value.trim().toLowerCase();
+    var password = document.getElementById('password').value.trim();
+    fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, email: email, password: password })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.status === 'success') {
+        document.getElementById('alert-box').innerHTML =
+          '<div class="alert alert-success"><i class="fa fa-check"></i> Registered! <a href="/login">Click here to login.</a></div>';
+      } else {
+        document.getElementById('alert-box').innerHTML =
+          '<div class="alert alert-danger"><i class="fa fa-exclamation-triangle"></i> ' + res.message + '</div>';
+      }
+    })
+    .catch(function() {
+      document.getElementById('alert-box').innerHTML =
+        '<div class="alert alert-danger"><i class="fa fa-exclamation-triangle"></i> Registration failed. Please try again.</div>';
+    });
+  });
+</script>
