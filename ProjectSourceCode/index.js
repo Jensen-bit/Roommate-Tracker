@@ -44,7 +44,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Partner's Notification count badge — Re-wired to use your Email Token system
 app.use(async (req, res, next) => {
   if (!req.session.user) return next();
   try {
@@ -87,8 +86,6 @@ if (process.env.NODE_ENV === 'test') {
     next();
   });
 }
-
-// ── AUTHENTICATION ─────────────────────────────────────────────────────────────
 
 app.get('/login', (req, res) => {
   if (req.session.user) return res.redirect('/balances');
@@ -162,8 +159,6 @@ app.post('/register', async (req, res) => {
 app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
-
-// ── EXPENSES & BALANCES ────────────────────────────────────────────────────────
 
 app.post('/add-expense', async (req, res) => {
     const { amount, note, category, date, group_id, splits } = req.body;
@@ -290,8 +285,6 @@ app.post('/mark-paid/:participantId', async (req, res) => {
   }
 });
 
-// ── PAYMENT HISTORY & PAY BALANCES ─────────────────────────────────────────────
-
 app.get('/payment-history', async (req, res) => {
   try {
     if (!req.session.user) return res.redirect('/login');
@@ -411,8 +404,6 @@ app.post('/pay-single/:participantId', async (req, res) => {
   }
 });
 
-// ── GROUPS & INVITES ───────────────────────────────────────────────────────────
-
 app.get('/groups', async (req, res) => {
   try {
     if (!req.session.user) return res.redirect('/login');
@@ -456,7 +447,6 @@ app.post('/groups/create', async (req, res) => {
   }
 });
 
-// Sends the email-based token invite
 app.post('/groups/:groupId/add', async (req, res) => {
   try {
     if (!req.session.user) return res.status(401).send('You must be logged in');
@@ -537,15 +527,11 @@ app.post('/groups/:groupId/delete', async (req, res) => {
   }
 });
 
-// ── NOTIFICATIONS ──────────────────────────────────────────────────────────────
-
 app.get('/notifications', async (req, res) => {
   try {
     if (!req.session.user) return res.redirect('/login');
     const currentUserId = req.session.user.user_id;
     const currentUserEmail = req.session.user.email;
-
-    // Pulling pending group invites securely matching the user's email
     const groupInvites = await db.any(
       `SELECT gi.token AS invite_id, gi.created_at,
               to_char(gi.created_at, 'Mon DD, YYYY') AS invite_date,
@@ -558,7 +544,6 @@ app.get('/notifications', async (req, res) => {
       [currentUserEmail]
     );
 
-    // Pending balance requests for groups this user manages
     const balanceRequests = await db.any(
       `SELECT br.request_id, br.amount, br.description,
               to_char(br.created_at, 'Mon DD, YYYY') AS created_date,
@@ -581,13 +566,11 @@ app.get('/notifications', async (req, res) => {
   }
 });
 
-// Accept from the UI Notification badge
 app.post('/notifications/invite/:id/accept', async (req, res) => {
   if (!req.session.user) return res.status(401).send('Login required');
   res.redirect(`/groups/join/${req.params.id}`);
 });
 
-// Decline from the UI Notification badge
 app.post('/notifications/invite/:id/decline', async (req, res) => {
   try {
     if (!req.session.user) return res.status(401).send('Login required');
@@ -599,7 +582,6 @@ app.post('/notifications/invite/:id/decline', async (req, res) => {
   }
 });
 
-// Partner's Balance Request actions
 app.post('/notifications/balance/:id/accept', async (req, res) => {
   try {
     if (!req.session.user) return res.status(401).send('Login required');
@@ -636,8 +618,6 @@ app.post('/notifications/balance/:id/reject', async (req, res) => {
     res.redirect('/notifications?error=Failed+to+reject+request');
   }
 });
-
-// ── ADD BALANCE / MONEY TAB ────────────────────────────────────────────────────
 
 app.get('/money', async (req, res) => {
   try {
@@ -759,8 +739,6 @@ app.post('/money/requests/:id/reject', async (req, res) => {
   }
 });
 
-// ── ACCOUNT SETTINGS ───────────────────────────────────────────────────────────
-
 app.get('/settings', async (req, res) => {
   try {
     if (!req.session.user) return res.redirect('/login');
@@ -831,8 +809,6 @@ app.post('/settings/password', async (req, res) => {
 app.get('/', (req, res) => {
   res.redirect('/balances');
 });
-
-// ── ANNOUNCEMENTS & CHORES ─────────────────────────────────────────────────────
 
 app.post('/announcements/add', async (req, res) => {
   try {
