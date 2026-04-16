@@ -32,16 +32,6 @@
       </a>
       <div class="navbar-custom-menu">
         <ul class="nav navbar-nav">
-          <!-- Dark Mode Toggle Switch -->
-          <li>
-            <a href="#" style="display: flex; align-items: center; padding-top: 15px; padding-bottom: 15px;" onclick="document.getElementById('theme-toggle-checkbox').click(); return false;">
-              <label class="theme-switch" for="theme-toggle-checkbox" style="margin: 0; cursor: pointer;" onclick="event.stopPropagation();">
-                <input type="checkbox" id="theme-toggle-checkbox" />
-                <div class="slider round"></div>
-              </label>
-              <span style="margin-left: 8px; font-weight: bold; color: white;">Dark Mode</span>
-            </a>
-          </li>
           {{#if currentUser}}
           <li class="dropdown user user-menu">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
@@ -52,7 +42,14 @@
               <li class="user-header">
                 <i class="fa fa-user-circle fa-5x"></i>
                 <p>{{currentUser.full_name}}</p>
+                <p><small>{{currentUser.email}}</small></p>
               </li>
+              <li>
+                <a href="/settings">
+                  <i class="fa fa-cog"></i> Account Settings
+                </a>
+              </li>
+              <li class="divider"></li>
               <li class="user-footer">
                 <div class="pull-right">
                   <form action="/logout" method="POST" style="display:inline;">
@@ -86,8 +83,19 @@
         <li class="{{#if balancesActive}}active{{/if}}">
           <a href="/balances"><i class="fa fa-balance-scale"></i><span>Balances</span></a>
         </li>
-        <li class="{{#if choresActive}}active{{/if}}">
-          <a href="/chores"><i class="fa fa-check-square-o"></i><span>Chores</span></a>
+        <li class="{{#if notificationsActive}}active{{/if}}">
+          <a href="/notifications">
+            <i class="fa fa-bell"></i>
+            <span>Notifications</span>
+            {{#if notificationCount}}
+              <span class="pull-right-container">
+                <span class="badge pull-right bg-red">{{notificationCount}}</span>
+              </span>
+            {{/if}}
+          </a>
+        </li>
+        <li class="{{#if moneyActive}}active{{/if}}">
+          <a href="/money"><i class="fa fa-dollar"></i><span>Add Balance</span></a>
         </li>
         <li class="{{#if historyActive}}active{{/if}}">
           <a href="/payment-history"><i class="fa fa-history"></i><span>Payment History</span></a>

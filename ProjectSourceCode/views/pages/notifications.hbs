@@ -1,0 +1,150 @@
+{{#if error}}
+<div class="alert alert-danger alert-dismissible">
+  <button type="button" class="close" data-dismiss="alert">&times;</button>
+  <i class="fa fa-exclamation-triangle"></i> {{error}}
+</div>
+{{/if}}
+{{#if success}}
+<div class="alert alert-success alert-dismissible">
+  <button type="button" class="close" data-dismiss="alert">&times;</button>
+  <i class="fa fa-check"></i> {{success}}
+</div>
+{{/if}}
+
+{{#if hasGroupInvites}}
+<!-- GROUP INVITES -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="box box-primary">
+      <div class="box-header with-border">
+        <h3 class="box-title">
+          <i class="fa fa-users"></i> Group Invites
+          <span class="badge bg-blue" style="margin-left:6px;">{{groupInvites.length}}</span>
+        </h3>
+        <p class="text-muted" style="margin:4px 0 0; font-size:13px;">
+          You've been invited to join these groups.
+        </p>
+      </div>
+      <div class="box-body no-padding">
+        <table class="table table-hover" style="margin-bottom:0;">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Invited By</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each groupInvites}}
+            <tr>
+              <td>
+                <i class="fa fa-home text-primary"></i>
+                <strong style="margin-left:6px;">{{group_name}}</strong>
+              </td>
+              <td>
+                <i class="fa fa-user-circle text-muted"></i>
+                {{invited_by_name}}
+              </td>
+              <td><small class="text-muted">{{invite_date}}</small></td>
+              <td>
+                <form action="/notifications/invite/{{invite_id}}/accept" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-success btn-flat">
+                    <i class="fa fa-check"></i> Accept
+                  </button>
+                </form>
+                <form action="/notifications/invite/{{invite_id}}/decline" method="POST"
+                      style="display:inline; margin-left:4px;"
+                      onsubmit="return confirm('Decline invite to {{group_name}}?')">
+                  <button type="submit" class="btn btn-sm btn-default btn-flat">
+                    <i class="fa fa-times"></i> Decline
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}
+
+{{#if hasBalanceRequests}}
+<!-- PENDING BALANCE REQUESTS (manager view) -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="box box-warning">
+      <div class="box-header with-border">
+        <h3 class="box-title">
+          <i class="fa fa-dollar"></i> Balance Requests
+          <span class="badge bg-yellow" style="margin-left:6px;">{{balanceRequests.length}}</span>
+        </h3>
+        <p class="text-muted" style="margin:4px 0 0; font-size:13px;">
+          Roommates are asking you to record these balances.
+        </p>
+      </div>
+      <div class="box-body no-padding">
+        <table class="table table-hover" style="margin-bottom:0;">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>From</th>
+              <th>Owes Them</th>
+              <th>Amount</th>
+              <th>Description</th>
+              <th>Submitted</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each balanceRequests}}
+            <tr>
+              <td><span class="label label-default">{{group_name}}</span></td>
+              <td>
+                <i class="fa fa-user-circle text-muted"></i>
+                <strong>{{requester_name}}</strong>
+              </td>
+              <td><i class="fa fa-user-circle text-muted"></i> {{target_name}}</td>
+              <td><strong class="text-warning">${{amount}}</strong></td>
+              <td>{{description}}</td>
+              <td><small class="text-muted">{{created_date}}</small></td>
+              <td>
+                <form action="/notifications/balance/{{request_id}}/accept" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-xs btn-success btn-flat">
+                    <i class="fa fa-check"></i> Accept
+                  </button>
+                </form>
+                <form action="/notifications/balance/{{request_id}}/reject" method="POST"
+                      style="display:inline; margin-left:4px;"
+                      onsubmit="return confirm('Reject this balance request?')">
+                  <button type="submit" class="btn btn-xs btn-danger btn-flat">
+                    <i class="fa fa-times"></i> Reject
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}
+
+{{#unless hasAny}}
+<!-- All clear -->
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <div class="box box-default">
+      <div class="box-body text-center" style="padding:50px 30px;">
+        <i class="fa fa-bell-slash fa-4x text-muted"></i>
+        <h3 style="margin-top:18px; color:#555;">You're all caught up</h3>
+        <p class="text-muted">No pending group invites or balance requests right now.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{{/unless}}

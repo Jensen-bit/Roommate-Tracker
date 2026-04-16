@@ -62,18 +62,21 @@
         </div>
 
         <div class="box-body">
-          <!-- Add member form -->
+          <!-- Invite member form -->
           <form action="/groups/{{group_id}}/add" method="POST" class="form-inline" style="margin-bottom:15px;">
             <div class="form-group">
               <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
-                <input type="email" name="email" class="form-control" placeholder="Add by email..." style="width:250px;">
+                <input type="email" name="email" class="form-control" placeholder="Invite by email..." style="width:250px;">
               </div>
             </div>
             <button type="submit" class="btn btn-success btn-flat" style="margin-left:8px;">
-              <i class="fa fa-user-plus"></i> Add Member
+              <i class="fa fa-paper-plane"></i> Send Invite
             </button>
           </form>
+          <p class="text-muted" style="font-size:12px; margin-top:-8px; margin-bottom:12px;">
+            <i class="fa fa-info-circle"></i> The person will receive a notification to accept or decline.
+          </p>
 
           <!-- Members table -->
           <table class="table table-hover table-condensed" style="margin-bottom:0;">
@@ -104,12 +107,21 @@
         </div>
 
         <div class="box-footer">
-          <form action="/groups/{{group_id}}/delete" method="POST"
+          {{#if (eq created_by ../currentUserId)}}
+          <form action="/groups/{{group_id}}/delete" method="POST" style="display:inline;"
                 onsubmit="return confirm('Delete group {{group_name}}? This cannot be undone.')">
             <button type="submit" class="btn btn-danger btn-flat btn-sm">
               <i class="fa fa-trash"></i> Delete Group
             </button>
           </form>
+          <a href="/money" class="btn btn-warning btn-flat btn-sm" style="margin-left:6px;">
+            <i class="fa fa-dollar"></i> Add Balance
+          </a>
+          {{else}}
+          <a href="/money" class="btn btn-primary btn-flat btn-sm">
+            <i class="fa fa-paper-plane"></i> Request a Balance
+          </a>
+          {{/if}}
         </div>
       </div>
       {{/each}}

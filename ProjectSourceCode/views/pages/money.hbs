@@ -1,0 +1,282 @@
+{{#if error}}
+<div class="alert alert-danger alert-dismissible">
+  <button type="button" class="close" data-dismiss="alert">&times;</button>
+  <i class="fa fa-exclamation-triangle"></i> {{error}}
+</div>
+{{/if}}
+{{#if success}}
+<div class="alert alert-success alert-dismissible">
+  <button type="button" class="close" data-dismiss="alert">&times;</button>
+  <i class="fa fa-check"></i> {{success}}
+</div>
+{{/if}}
+
+<div class="row">
+
+  {{#if isManagerAnywhere}}
+  <!-- MANAGER: Add Balance Directly -->
+  <div class="col-md-6">
+    <div class="box box-warning">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-plus-circle"></i> Add Balance Directly</h3>
+        <div class="box-tools pull-right">
+          <span class="label label-warning"><i class="fa fa-shield"></i> Manager only</span>
+        </div>
+      </div>
+      <div class="box-body">
+        <p class="text-muted" style="margin-bottom:15px;">
+          Instantly set an amount that a roommate owes you — no approval needed.
+        </p>
+        <form action="/money/add" method="POST">
+          <div class="form-group">
+            <label>Group</label>
+            <select name="group_id" id="managerGroupSelect" class="form-control" required
+                    onchange="populateMembers('managerGroupSelect','managerMemberSelect',managedGroupsData)">
+              <option value="">— Select a group —</option>
+              {{#each managedGroups}}
+                <option value="{{group_id}}">{{group_name}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Member who owes you</label>
+            <select name="user_id" id="managerMemberSelect" class="form-control" required>
+              <option value="">— Select a group first —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount ($)</label>
+            <input type="number" name="amount" class="form-control"
+                   placeholder="0.00" min="0.01" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Description <small class="text-muted">(optional)</small></label>
+            <input type="text" name="description" class="form-control"
+                   placeholder="e.g. Rent, Utilities, Groceries...">
+          </div>
+          <button type="submit" class="btn btn-warning btn-flat btn-block">
+            <i class="fa fa-check"></i> Add Balance
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{/if}}
+
+  {{#if isMemberNotManager}}
+  <!-- NON-MANAGER: Request a Balance -->
+  <div class="col-md-6">
+    <div class="box box-primary">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-paper-plane"></i> Request a Balance</h3>
+        <div class="box-tools pull-right">
+          <span class="label label-primary"><i class="fa fa-clock-o"></i> Needs approval</span>
+        </div>
+      </div>
+      <div class="box-body">
+        <p class="text-muted" style="margin-bottom:15px;">
+          Ask your group manager to record that a roommate owes you money.
+        </p>
+        <form action="/money/request" method="POST">
+          <div class="form-group">
+            <label>Group</label>
+            <select name="group_id" id="memberGroupSelect" class="form-control" required
+                    onchange="populateMembers('memberGroupSelect','memberMemberSelect',memberGroupsData)">
+              <option value="">— Select a group —</option>
+              {{#each memberGroups}}
+                <option value="{{group_id}}">{{group_name}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Member who owes you</label>
+            <select name="user_id" id="memberMemberSelect" class="form-control" required>
+              <option value="">— Select a group first —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount ($)</label>
+            <input type="number" name="amount" class="form-control"
+                   placeholder="0.00" min="0.01" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Description <small class="text-muted">(required)</small></label>
+            <input type="text" name="description" class="form-control"
+                   placeholder="e.g. I covered dinner for the group..." required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-flat btn-block">
+            <i class="fa fa-paper-plane"></i> Submit Request
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{/if}}
+
+</div>
+
+{{#if hasPendingRequests}}
+<!-- MANAGER: Pending Requests -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="box box-danger">
+      <div class="box-header with-border">
+        <h3 class="box-title">
+          <i class="fa fa-clock-o"></i> Pending Requests
+          <span class="badge bg-red" style="margin-left:6px;">{{pendingRequests.length}}</span>
+        </h3>
+      </div>
+      <div class="box-body no-padding">
+        <table class="table table-hover" style="margin-bottom:0;">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Requested By</th>
+              <th>Owes Them</th>
+              <th>Amount</th>
+              <th>Description</th>
+              <th>Submitted</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each pendingRequests}}
+            <tr>
+              <td><span class="label label-default">{{group_name}}</span></td>
+              <td><i class="fa fa-user-circle text-muted"></i> <strong>{{requester_name}}</strong></td>
+              <td><i class="fa fa-user-circle text-muted"></i> {{target_name}}</td>
+              <td><strong class="text-warning">${{amount}}</strong></td>
+              <td>{{description}}</td>
+              <td><small class="text-muted">{{created_date}}</small></td>
+              <td>
+                <form action="/money/requests/{{request_id}}/accept" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-xs btn-success btn-flat">
+                    <i class="fa fa-check"></i> Accept
+                  </button>
+                </form>
+                <form action="/money/requests/{{request_id}}/reject" method="POST"
+                      style="display:inline; margin-left:4px;"
+                      onsubmit="return confirm('Reject this request?')">
+                  <button type="submit" class="btn btn-xs btn-danger btn-flat">
+                    <i class="fa fa-times"></i> Reject
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}
+
+{{#if hasMyRequests}}
+<!-- Everyone: My Request History -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="box box-default">
+      <div class="box-header with-border">
+        <h3 class="box-title"><i class="fa fa-history"></i> My Submitted Requests</h3>
+      </div>
+      <div class="box-body no-padding">
+        <table class="table table-hover" style="margin-bottom:0;">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Who Owes Me</th>
+              <th>Amount</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th>Reviewed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each myRequests}}
+            <tr>
+              <td><span class="label label-default">{{group_name}}</span></td>
+              <td><i class="fa fa-user-circle text-muted"></i> {{target_name}}</td>
+              <td><strong>${{amount}}</strong></td>
+              <td>{{description}}</td>
+              <td>
+                {{#if (eq status 'pending')}}
+                  <span class="label label-warning"><i class="fa fa-clock-o"></i> Pending</span>
+                {{else}}
+                  {{#if (eq status 'accepted')}}
+                    <span class="label label-success"><i class="fa fa-check"></i> Accepted</span>
+                  {{else}}
+                    <span class="label label-danger"><i class="fa fa-times"></i> Rejected</span>
+                  {{/if}}
+                {{/if}}
+              </td>
+              <td><small class="text-muted">{{created_date}}</small></td>
+              <td>
+                {{#if reviewed_date}}
+                  <small class="text-muted">{{reviewed_date}}<br>by {{reviewed_by_name}}</small>
+                {{else}}
+                  <small class="text-muted">—</small>
+                {{/if}}
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}
+
+{{#unless isManagerAnywhere}}
+  {{#unless isMemberNotManager}}
+  <!-- User has no groups yet -->
+  <div class="row">
+    <div class="col-md-8 col-md-offset-2">
+      <div class="box box-default">
+        <div class="box-body text-center" style="padding:40px;">
+          <i class="fa fa-users fa-4x text-muted"></i>
+          <h3 style="margin-top:15px;">You're not in any groups yet</h3>
+          <p class="text-muted">Join or create a group to start adding balances.</p>
+          <a href="/groups" class="btn btn-primary btn-flat">
+            <i class="fa fa-users"></i> Go to Groups
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/unless}}
+{{/unless}}
+
+<script>
+  var managedGroupsData = {{{json managedGroups}}};
+  var memberGroupsData  = {{{json memberGroups}}};
+
+  function populateMembers(groupSelectId, memberSelectId, groupsData) {
+    var groupId      = parseInt(document.getElementById(groupSelectId).value, 10);
+    var memberSelect = document.getElementById(memberSelectId);
+    memberSelect.innerHTML = '';
+
+    if (!groupId) {
+      memberSelect.innerHTML = '<option value="">— Select a group first —</option>';
+      return;
+    }
+
+    var group = groupsData.find(function(g) { return g.group_id === groupId; });
+    if (group && group.members && group.members.length > 0) {
+      var placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '— Select a member —';
+      memberSelect.appendChild(placeholder);
+      group.members.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.user_id;
+        opt.textContent = m.full_name;
+        memberSelect.appendChild(opt);
+      });
+    } else {
+      memberSelect.innerHTML = '<option value="">No other members in this group</option>';
+    }
+  }
+</script>
