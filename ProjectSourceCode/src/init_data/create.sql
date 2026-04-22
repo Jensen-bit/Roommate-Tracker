@@ -42,7 +42,6 @@ CREATE TABLE group_members (
     UNIQUE(group_id, user_id)
 );
 
--- Preserving YOUR email-based token invite system
 CREATE TABLE group_invites (
     token VARCHAR(255) PRIMARY KEY,
     group_id INT REFERENCES groups(group_id) ON DELETE CASCADE,
@@ -88,7 +87,6 @@ CREATE TABLE expense_participants (
     marked_paid_by INTEGER REFERENCES users(user_id)
 );
 
--- Adding partner's new feature table
 CREATE TABLE balance_requests (
     request_id SERIAL PRIMARY KEY,
     group_id INT REFERENCES groups(group_id) ON DELETE CASCADE,
