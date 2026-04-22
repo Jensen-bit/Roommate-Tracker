@@ -225,15 +225,31 @@ app.get('/balances', async (req, res) => {
 
     let memberIds = [];
     let selectedGroup = null;
-    if (selectedGroupId && groups.length) {
-      selectedGroup = groups.find(g => g.group_id === selectedGroupId) || null;
-      try {
-        const members = await db.any(`SELECT user_id FROM group_members WHERE group_id = $1 AND user_id <> $2`, [selectedGroupId, currentUserId]);
+    try {
+      if (selectedGroupId && groups.length) {
+        selectedGroup = groups.find(g => g.group_id === selectedGroupId) || null;
+        if (selectedGroup) {
+          const members = await db.any(
+            `SELECT user_id
+             FROM group_members
+             WHERE group_id = $1 AND user_id <> $2`,
+            [selectedGroupId, currentUserId]
+          );
+          memberIds = members.map(m => m.user_id);
+        }
+      } else {
+        const members = await db.any(
+          `SELECT DISTINCT gm_other.user_id
+           FROM group_members gm_me
+           JOIN group_members gm_other ON gm_me.group_id = gm_other.group_id
+           WHERE gm_me.user_id = $1 AND gm_other.user_id <> $1`,
+          [currentUserId]
+        );
         memberIds = members.map(m => m.user_id);
-      } catch (e) { memberIds = []; }
-    }
+      }
+    } catch (e) { memberIds = []; }
 
-    const memberFilter = selectedGroupId && memberIds.length > 0 ? `AND u.user_id IN (${memberIds.join(',')})` : selectedGroupId ? 'AND FALSE' : '';
+    const memberFilter = memberIds.length > 0 ? `AND u.user_id IN (${memberIds.join(',')})` : 'AND FALSE';
     const balanceParams = selectedGroupId ? [currentUserId, selectedGroupId] : [currentUserId];
     const groupExpenseFilter = selectedGroupId ? 'AND e.group_id = $2' : '';
     const query = `
