@@ -101,38 +101,3 @@ CREATE TABLE balance_requests (
     reviewed_at TIMESTAMP,
     reviewed_by INT REFERENCES users(user_id)
 );
-
--- ==========================================
--- DUMMY DATA INSERTS
--- ==========================================
-
-INSERT INTO users (full_name, email, password) VALUES
-('Brennan Long',  'brennan@test.com',   '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW'),
-('Jensen Trempe',    'Jensen@test.com', '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW'),
-('Roommate 2',    'roommate2@test.com', '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW'),
-('Roommate 3',    'roommate3@test.com', '$2b$10$DF1tG1G96APPC/oQQS6LTOsXsubwUicvuX8t3kPjtTr1WnGfQj1RW');
-
-INSERT INTO roommate_groups (group_name) VALUES ('The Apartment');
-INSERT INTO users_to_groups (user_id, group_id) VALUES (1, 1), (2, 1), (3, 1), (4, 1);
-
-INSERT INTO groups (group_name, created_by) VALUES ('Apartment', 1);
-INSERT INTO group_members (group_id, user_id) VALUES (1, 1), (1, 2), (1, 3), (1, 4);
-
-INSERT INTO expenses (description, amount, paid_by, group_id, category, created_at) VALUES
-('Internet Bill', 90.00, 1, 1, 'Utilities', CURRENT_TIMESTAMP - INTERVAL '5 days'),
-('Groceries', 60.00, 2, 1, 'Groceries', CURRENT_TIMESTAMP - INTERVAL '3 days'),
-('Utilities', 120.00, 1, 1, 'Utilities', CURRENT_TIMESTAMP - INTERVAL '1 day');
-
-INSERT INTO expense_participants (expense_id, user_id, amount_owed, is_paid, paid_at, marked_paid_by) VALUES
-(1, 2, 30.00, TRUE,  CURRENT_TIMESTAMP - INTERVAL '4 days', 1),
-(1, 3, 30.00, FALSE, NULL, NULL),
-(2, 1, 30.00, TRUE,  CURRENT_TIMESTAMP - INTERVAL '2 days', 2),
-(2, 3, 30.00, FALSE, NULL, NULL),
-(3, 2, 40.00, FALSE, NULL, NULL),
-(3, 3, 40.00, FALSE, NULL, NULL);
-
-INSERT INTO chores (description, assigned_to) VALUES
-('Take out the kitchen trash', 1),
-('Wipe down the counters', 2),
-('Vacuum the living room', 3),
-('Clean the main bathroom', 4);
