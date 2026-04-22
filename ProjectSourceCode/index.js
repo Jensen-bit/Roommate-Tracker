@@ -502,8 +502,8 @@ app.post('/groups/:groupId/add', async (req, res) => {
 
     await db.none(`INSERT INTO group_invites (token, group_id, email) VALUES ($1, $2, $3)`, [token, groupId, email]);
     
-    // Fire Email Link
-    const inviteLink = `http://localhost:3000/groups/join/${token}`;
+    const domain = process.env.RENDER_EXTERNAL_URL
+    const inviteLink = `${domain}/groups/join/${token}`;
     await sendGroupInviteEmail(email, req.session.user.full_name, group.group_name, inviteLink);
 
     res.redirect('/groups?success=Invitation+email+sent!');
