@@ -68,14 +68,20 @@ app.use(async (req, res, next) => {
   next();
 });
 
-const db = pgp({
+const dbConfig = {
   host: process.env.POSTGRES_HOST || 'db',
   port: process.env.POSTGRES_PORT || 5432,
   database: process.env.POSTGRES_DB,
   user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  ssl: { rejectUnauthorized: false }
-});
+  password: process.env.POSTGRES_PASSWORD
+};
+
+// Render Postgres needs SSL, but the local Docker Postgres service usually does not.
+if (dbConfig.host !== 'db' && process.env.POSTGRES_SSL !== 'false') {
+  dbConfig.ssl = { rejectUnauthorized: false };
+}
+
+const db = pgp(dbConfig);
 
 if (process.env.NODE_ENV === 'test') {
   app.use((req, res, next) => {
@@ -228,16 +234,18 @@ app.get('/balances', async (req, res) => {
     }
 
     const memberFilter = selectedGroupId && memberIds.length > 0 ? `AND u.user_id IN (${memberIds.join(',')})` : selectedGroupId ? 'AND FALSE' : '';
+    const balanceParams = selectedGroupId ? [currentUserId, selectedGroupId] : [currentUserId];
+    const groupExpenseFilter = selectedGroupId ? 'AND e.group_id = $2' : '';
     const query = `
       WITH paid_by_me AS (
         SELECT ep.user_id AS roommate_id, SUM(ep.amount_owed) AS amount FROM expenses e
         JOIN expense_participants ep ON e.expense_id = ep.expense_id
-        WHERE e.paid_by = $1 AND ep.user_id <> $1 AND ep.is_paid = FALSE GROUP BY ep.user_id
+        WHERE e.paid_by = $1 AND ep.user_id <> $1 AND ep.is_paid = FALSE ${groupExpenseFilter} GROUP BY ep.user_id
       ),
       i_owe_them AS (
         SELECT e.paid_by AS roommate_id, SUM(ep.amount_owed) AS amount FROM expenses e
         JOIN expense_participants ep ON e.expense_id = ep.expense_id
-        WHERE ep.user_id = $1 AND e.paid_by <> $1 AND ep.is_paid = FALSE GROUP BY e.paid_by
+        WHERE ep.user_id = $1 AND e.paid_by <> $1 AND ep.is_paid = FALSE ${groupExpenseFilter} GROUP BY e.paid_by
       ),
       combined AS (
         SELECT u.user_id AS roommate_id, u.full_name AS roommate_name, COALESCE(pbm.amount, 0) - COALESCE(iot.amount, 0) AS net_balance
@@ -247,7 +255,7 @@ app.get('/balances', async (req, res) => {
       SELECT roommate_id, roommate_name, ROUND(net_balance::numeric, 2) AS net_balance FROM combined ORDER BY roommate_name;
     `;
 
-    const rows = await db.any(query, [currentUserId]);
+    const rows = await db.any(query, balanceParams);
     const balances = rows.map((row) => {
       const amount = Number(row.net_balance);
       if (amount > 0) return { roommate_id: row.roommate_id, roommate_name: row.roommate_name, net_balance: amount, color_class: 'text-success', is_zero: false, display_text: `${row.roommate_name} owes you $${amount.toFixed(2)}` };
@@ -255,7 +263,17 @@ app.get('/balances', async (req, res) => {
       return { roommate_id: row.roommate_id, roommate_name: row.roommate_name, net_balance: amount, color_class: 'text-secondary', is_zero: true, display_text: '$0.00' };
     });
 
-    const unpaidShares = await db.any(`SELECT ep.participant_id, e.description, u.full_name AS owes_user, ep.amount_owed FROM expense_participants ep JOIN expenses e ON ep.expense_id = e.expense_id JOIN users u ON ep.user_id = u.user_id WHERE ep.is_paid = FALSE ORDER BY ep.participant_id;`);
+    const unpaidShares = await db.any(
+      `SELECT ep.participant_id, e.description, u.full_name AS owes_user, ep.amount_owed
+       FROM expense_participants ep
+       JOIN expenses e ON ep.expense_id = e.expense_id
+       JOIN users u ON ep.user_id = u.user_id
+       WHERE ep.is_paid = FALSE
+         AND (e.paid_by = $1 OR ep.user_id = $1)
+         ${groupExpenseFilter}
+       ORDER BY ep.participant_id;`,
+      balanceParams
+    );
     
     let announcements = [];
     try {
