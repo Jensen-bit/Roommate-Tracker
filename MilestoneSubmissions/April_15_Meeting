@@ -1,0 +1,15 @@
+Release Notes
+Added notification system for group invites
+Implemented groups page and sorting logic
+Added pay-balance and account settings features
+Built chore tracking feature
+Added announcements/bulletin board system
+Completed dark mode feature
+Resolved major merge conflicts across team branches
+
+Plan for Next Week
+Deploy application to Render
+Fix database configuration issues
+Improve authentication/session handling
+Refine balance calculations
+Polish UI and fix bugs
