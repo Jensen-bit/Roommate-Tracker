@@ -15,7 +15,7 @@ A web application built to streamline shared living for college students.
 
 ## Tech Stack
 - **Frontend:** HTML/CSS/JS
-- **Backend:** Node.js
+- **Backend:** Node.js, Express, Nodemailer
 - **Database:** PostgreSQL
 - **Environment:** Docker
 
